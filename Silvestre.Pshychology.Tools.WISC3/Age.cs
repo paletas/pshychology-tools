@@ -24,5 +24,25 @@
         {
             return other.Years == this.Years && other.Months == this.Months && other.Days == this.Days;
         }
+
+        public static bool operator >(Age age1, Age age2)
+        {
+            return age1.CompareTo(age2) > 0;
+        }
+
+        public static bool operator <(Age age1, Age age2)
+        {
+            return age1.CompareTo(age2) < 0;
+        }
+
+        public static bool operator >=(Age age1, Age age2)
+        {
+            return age1.CompareTo(age2) >= 0;
+        }
+
+        public static bool operator <=(Age age1, Age age2)
+        {
+            return age1.CompareTo(age2) <= 0;
+        }
     }
 }
