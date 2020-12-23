@@ -256,6 +256,6 @@
     <value>AVISO</value>
   </data>
   <data name="WarningDetails" xml:space="preserve">
-    <value>Não é o objetivo desta calculadora explicar como o teste funciona mas sim, providenciar uma plataforma em que seja mais rápido, e com menos risco de erro, calcular os resultados do mesmo.</value>
+    <value>Não é o objetivo desta calculadora explicar como o teste funciona mas sim, providenciar uma plataforma em que seja mais rápido, e com menos risco de erro, calcular os resultados do mesmo. Apenas suporta a população de Portugal!</value>
   </data>
 </root>
