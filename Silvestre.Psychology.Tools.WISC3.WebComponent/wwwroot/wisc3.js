@@ -12,6 +12,11 @@ wisc3.drawStandardResultsChart = function (element, points) {
     if (wisc3.__standardResulsChartInstance !== undefined)
         wisc3.__standardResulsChartInstance.destroy();
 
+    if (points === undefined) {
+        wisc3.__standardResulsChartInstance.clear().destroy();
+        wisc3.__standardResulsChartInstance = undefined;
+    }
+
     return wisc3.__standardResulsChartInstance = new Chart(element.getContext('2d'), {
         type: 'line',
         data: {
@@ -124,6 +129,11 @@ wisc3.drawStandardResultsChart = function (element, points) {
 wisc3.drawStandardFactorialIndicesChart = function (element, points) {
     if (wisc3.__standardFactorialIndicesChartInstance !== undefined)
         wisc3.__standardFactorialIndicesChartInstance.destroy();
+
+    if (points === undefined) {
+        wisc3.__standardFactorialIndicesChartInstance.clear().destroy();
+        wisc3.__standardFactorialIndicesChartInstance = undefined;
+    }
 
     return wisc3.__standardFactorialIndicesChartInstance = new Chart(element.getContext('2d'), {
         type: 'line',
@@ -249,6 +259,11 @@ wisc3.drawStandardFactorialIndicesChart = function (element, points) {
 wisc3.drawQiResultsChart = function (element, points) {
     if (wisc3.__qiResultsChartInstance !== undefined)
         wisc3.__qiResultsChartInstance.destroy();
+
+    if (points === undefined) {
+        wisc3.__qiResultsChartInstance.clear().destroy();
+        wisc3.__qiResultsChartInstance = undefined;
+    }
 
     return wisc3.__qiResultsChartInstance = new Chart(element.getContext('2d'), {
         type: 'boxplot',

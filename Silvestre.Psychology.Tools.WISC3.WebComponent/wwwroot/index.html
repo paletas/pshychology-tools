@@ -17,17 +17,22 @@
     <body>
         <app>Loading...</app>
 
-        <div x-data="{ visible: false }" x-bind:class="{ 'hidden': visible === false }" id="blazor-error-ui" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <img src="..." class="rounded mr-2" alt="...">
-                <strong class="mr-auto">
-                    An unhandled error has occurred.
-                </strong>
+        <div class="flex flex-col" x-data="{ visible: false }" x-bind:class="{ 'hidden': visible === false, 'block': visible }" id="blazor-error-ui" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="flex-auto toast-header">
+                <strong class="mr-auto">An unhandled error has occurred.</strong>
                 <small class="text-muted">just now</small>
-                <button type="button" class="btn-close" data-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body">
-                <a href="" class="reload">Reload</a>
+            <div class="flex-auto toast-body flex flex-row">
+                <a href="">
+                    <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </a>
+                <a href="" x-on:click.prevent="visible = false" aria-label="Close">
+                    <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </a>
             </div>
         </div>
         <script type="text/javascript" src="_framework/blazor.webassembly.js"></script>
@@ -44,6 +49,22 @@
                 get: () => window.localStorage['BlazorCulture'],
                 set: (value) => window.localStorage['BlazorCulture'] = value
             };
+
+            var blazorErrorUI = document.querySelector('#blazor-error-ui');
+            var blazorErrorObserver = new MutationObserver(function (mutations) {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'attributes') {
+                        if (mutation.attributeName === 'style') {
+                            if (mutation.target.style.display === 'block') {
+                                blazorErrorUI.__x.$data.visible = true;
+                                blazorErrorUI.removeAttribute('style');
+                            }
+                        }
+                    }
+                });
+            });
+
+            blazorErrorObserver.observe(blazorErrorUI, { attributes: true });
         </script>
     </body>
 </html>

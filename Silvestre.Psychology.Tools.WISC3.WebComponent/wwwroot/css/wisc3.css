@@ -919,6 +919,10 @@ select {
   flex-shrink: 0;
 }
 
+.float-right {
+  float: right;
+}
+
 .font-medium {
   font-weight: 500;
 }
@@ -1309,6 +1313,11 @@ select {
   color: rgba(17, 24, 39, var(--tw-text-opacity));
 }
 
+.text-red-900 {
+  --tw-text-opacity: 1;
+  color: rgba(127, 29, 29, var(--tw-text-opacity));
+}
+
 .text-indigo-600 {
   --tw-text-opacity: 1;
   color: rgba(79, 70, 229, var(--tw-text-opacity));
@@ -1435,7 +1444,6 @@ select {
   background: lightyellow;
   bottom: 0;
   box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-  display: none;
   left: 0;
   padding: 0.6rem 1.25rem 0.7rem 1.25rem;
   position: fixed;

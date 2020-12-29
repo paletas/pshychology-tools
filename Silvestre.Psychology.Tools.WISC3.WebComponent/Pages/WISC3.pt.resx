@@ -225,6 +225,9 @@
   <data name="TestsPatternResults" xml:space="preserve">
     <value>Resultados Padronizados</value>
   </data>
+  <data name="TestsPatternResults.Error.OutOfBounds" xml:space="preserve">
+    <value>Resultado bruto está fora do intervalo de valores esperados ({0} - {1})</value>
+  </data>
   <data name="TestsPatternResults.PerceptiveOrganization" xml:space="preserve">
     <value>OP</value>
   </data>

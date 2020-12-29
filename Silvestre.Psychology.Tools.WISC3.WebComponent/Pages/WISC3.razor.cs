@@ -29,8 +29,7 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
             var rng = new Random();
             foreach (var test in this.ViewModel.StanderdizationPhase.AllTests)
             {
-                var boundaries = test.GetRawResultBoundaries();
-                test.RawResult = (short)rng.Next(boundaries?.MinValue ?? 1, boundaries?.MaxValue ?? 1);
+                test.RawResult = (short)rng.Next(test.MinRawResult ?? 1, test.MaxRawResult ?? 1);
             }
 
             WISC3ViewModel_OnStandardResultsUpdated(this, EventArgs.Empty);
@@ -97,6 +96,12 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
                 this.JsRuntime.InvokeVoidAsync("wisc3.drawStandardResultsChart", this.StandardResultsChart, this.ViewModel.GetStandardResultsChartData());
                 this.JsRuntime.InvokeVoidAsync("wisc3.drawStandardFactorialIndicesChart", this.StandardFactorialIndicesChart, this.ViewModel.GetStandardFactorialIndicesChartData());
                 this.JsRuntime.InvokeVoidAsync("wisc3.drawQiResultsChart", this.QIResultsChart, this.ViewModel.GetQiIndicesChartData());
+            }
+            else
+            {
+                this.JsRuntime.InvokeVoidAsync("wisc3.drawStandardResultsChart", this.StandardResultsChart, null);
+                this.JsRuntime.InvokeVoidAsync("wisc3.drawStandardFactorialIndicesChart", this.StandardFactorialIndicesChart, null);
+                this.JsRuntime.InvokeVoidAsync("wisc3.drawQiResultsChart", this.QIResultsChart, null);
             }
         }
 

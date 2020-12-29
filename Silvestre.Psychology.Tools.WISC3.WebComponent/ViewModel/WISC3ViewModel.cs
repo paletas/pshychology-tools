@@ -125,7 +125,7 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
 
         private void UpdateCalculatorResults(object sender, EventArgs args)
         {
-            if (this.IsAgeSupported == true && this.StanderdizationPhase.AllTests.Where(t => t.Mandatory).All(t => t.RawResult != null))
+            if (this.IsAgeSupported == true && this.StanderdizationPhase.AllTests.Where(t => t.Mandatory).All(t => t.TestOK))
             {
                 this._verbal.StandardResult = this.StanderdizationPhase.VerbalTotal;
                 this._realization.StandardResult = this.StanderdizationPhase.RealizationTotal;

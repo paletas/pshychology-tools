@@ -39,11 +39,31 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
 
                 this._subjectAge = value;
 
-                if (this._subjectAge == null) this._testDescriptorPerAge = null;
-                else this._testDescriptorPerAge = this._testStandardizer.GetTestDescriptorPerAge(this._testType, this._subjectAge.Value);
+                if (this._subjectAge == null)
+                {
+                    this._testDescriptorPerAge = null;
+                    this.MinRawResult = this.MaxRawResult = null;
+                }
+                else
+                {
+
+                    this._testDescriptorPerAge = this._testStandardizer.GetTestDescriptorPerAge(this._testType, this._subjectAge.Value);
+                    this.MinRawResult = this._testDescriptorPerAge.Boundaries.Min;
+                    this.MaxRawResult = this._testDescriptorPerAge.Boundaries.Max;
+                }
 
                 UpdateStandardResults();
             }
+        }
+
+        public short? MinRawResult
+        {
+            get; private set;
+        }
+
+        public short? MaxRawResult
+        {
+            get; private set;
         }
 
         public short? RawResult
@@ -56,6 +76,11 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
             }
         }
 
+        public bool TestOK
+        {
+            get => RawResult != null && RawResultOutOfBounds == false;
+        }
+
         public short? StandardVerbal { get; private set; }
 
         public short? StandardRealization { get; private set; }
@@ -66,14 +91,11 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
 
         public short? StandardProcessingVelocity { get; private set; }
 
-        public (short MinValue, short? MaxValue)? GetRawResultBoundaries()
-        {
-            return this._testDescriptorPerAge?.Boundaries;
-        }
+        public bool RawResultOutOfBounds { get; private set; }
 
         internal void UpdateStandardResults()
         {
-            if (this.SubjectAge != null && this.RawResult != null)
+            if (this.SubjectAge != null && this.RawResult != null && this.RawResult >= MinRawResult && this.RawResult <= MaxRawResult)
             {
                 var results = this._testStandardizer.Standerdization(this._testType, this.SubjectAge.Value, this.RawResult.Value);
 
@@ -82,6 +104,8 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
                 this.StandardVerbalComprehension = results.VerbalComprehension;
                 this.StandardPerceptiveOrganization = results.PerceptiveOrganization;
                 this.StandardProcessingVelocity = results.ProcessingVelocity;
+
+                this.RawResultOutOfBounds = false;
             }
             else
             {
@@ -90,6 +114,8 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
                 this.StandardVerbalComprehension = null;
                 this.StandardPerceptiveOrganization = null;
                 this.StandardProcessingVelocity = null;
+
+                this.RawResultOutOfBounds = this.RawResult < MinRawResult || this.RawResult > MaxRawResult;
             }
 
             this.OnStandardResultsUpdated?.Invoke(this, EventArgs.Empty);
