@@ -29,7 +29,7 @@
                 @if (this.ViewModel.IsAgeSupported.HasValue)
                 {
                 <div>
-                    <svg class="stroke-current stroke-2 w-10 h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <svg class="block stroke-current stroke-2 w-10 h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                     <label class="break-words w-4">@Localization["Button.ShowLookupTable"]</label>
@@ -64,7 +64,7 @@
         }
     </div>
 
-    <div class="flex-1 space-y-4 lg:space-y-0 lg:space-x-4 flex lg:flex-row flex-col text-sm">
+    <div class="flex-1 space-y-4 xl:space-y-0 xl:space-x-4 flex xl:flex-row flex-col text-sm">
         <div class="flex-1 bg-gray-100 rounded-xl shadow-md justify-items-center p-2 focus-within:border-2 focus-within:border-gray-600">
             <table class="table-fixed w-full border-2 border-gray-600 border-separate items-center rounded-xl bg-gray-600">
                 <thead class="text-white">
@@ -176,11 +176,11 @@
         </div>
     </div>
 
-    <div class="flex-auto flex flex-col lg:flex-row bg-gray-100 rounded-xl shadow-md justify-items-center">
+    <div class="flex-auto flex flex-col xl:flex-row bg-gray-100 rounded-xl shadow-md justify-items-center">
         <div class="flex-1">
             <canvas class="object-contain" @ref="StandardResultsChart" />
         </div>
-        <div class="flex-1">
+        <div class="flex-1 pb-2">
             <canvas class="object-contain" @ref="StandardFactorialIndicesChart" />
         </div>
     </div>
