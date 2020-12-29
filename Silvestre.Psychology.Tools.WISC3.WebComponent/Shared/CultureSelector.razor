@@ -1,0 +1,33 @@
+﻿@using  System.Globalization
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+@inject Microsoft.Extensions.Localization.IStringLocalizer<CultureSelector> Localization
+
+<div class="font-bold inline">@Localization["Language"]:</div>
+<select class="border-0 border-b-2" @bind="Culture">
+    @foreach (var culture in Program.SupportedCultures)
+    {
+    <option value="@culture">@Localization[$"Language.{culture}"]</option>
+    }
+</select>
+
+@code
+{
+    CultureInfo Culture
+    {
+        get
+        {
+            return CultureInfo.CurrentCulture;
+        }
+        set
+        {
+            if (CultureInfo.CurrentCulture != value)
+            {
+                var js = (IJSInProcessRuntime)JSRuntime;
+                js.InvokeVoid("blazorCulture.set", value.Name);
+
+                Nav.NavigateTo(Nav.Uri, forceLoad: true);
+            }
+        }
+    }
+}

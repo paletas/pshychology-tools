@@ -1,0 +1,187 @@
+﻿@page "/wisc3"
+
+@using Silvestre.Psychology.Tools.WISC3.WebComponent.Components;
+
+@inject Microsoft.Extensions.Localization.IStringLocalizer<WISC3> Localization
+
+<div class="md:hidden">
+    @Localization["DeviceSizeSmall"]
+</div>
+
+<div class="hidden md:flex flex-col space-y-4 flex-wrap mt-2">
+    <div class="flex-auto w-full bg-yellow-300 bg-opacity-75 rounded ring-4 ring-yellow-200 p-1" role="alert">
+        <b>@Localization["Warning"]</b> @Localization["WarningDetails"]
+    </div>
+
+    <div class="flex-initial flex flex-col bg-gray-100 rounded-xl shadow-md items-left p-2 space-y-5">
+        <div class="flex-auto flex flex-row divide-x divide-black space-x-4">
+            <div class="flex-auto">
+                <label class="font-extrabold block uppercase">@Localization["Input"]</label>
+
+                <div>
+                    <label for="testDate" class="font-bold">@Localization["TestDate"]</label>
+                    <input type="date" class="mt-0 block w-full px-0.5 border-0 border-b-2 border-gray-200 focus:ring-0 focus:border-black" id="testDate" required @bind="TestDate" />
+                </div>
+                <div>
+                    <label for="subjectBirthday" class="font-bold">@Localization["SubjectBirthday"]</label>
+                    <input type="date" class="mt-0 block w-full px-0.5 border-0 border-b-2 border-gray-200 focus:ring-0 focus:border-black" id="subjectBirthday" required @bind="SubjectBirthday" />
+                </div>
+                @if (this.ViewModel.IsAgeSupported.HasValue)
+                {
+                <div>
+                    <svg class="stroke-current stroke-2 w-10 h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <label class="break-words w-4">@Localization["Button.ShowLookupTable"]</label>
+                </div>
+                }
+            </div>
+
+            <div class="flex-auto pl-4">                
+                <div>
+                    <label class="font-extrabold block uppercase">@Localization["SubjectAge"]</label>
+
+                    <label for="subjectAgeYear" class="font-bold">@Localization["SubjectAge.Display.Year"]</label>
+                    <input type="number" class="mt-0 block w-full px-0.5 border-0 border-b-2 border-gray-200 focus:ring-0 focus:border-black" id="subjectAgeYear" disabled value="@this.ViewModel?.SubjectAge?.Years" />
+                    <label for="subjectAgeMonth" class="font-bold">@Localization["SubjectAge.Display.Month"]</label>
+                    <input type="number" class="mt-0 block w-full px-0.5 border-0 border-b-2 border-gray-200 focus:ring-0 focus:border-black" id="subjectAgeMonth" disabled value="@this.ViewModel?.SubjectAge?.Months" />
+                    <label for="subjectAgeDay" class="font-bold">@Localization["SubjectAge.Display.Day"]</label>
+                    <input type="number" class="mt-0 block w-full px-0.5 border-0 border-b-2 border-gray-200 focus:ring-0 focus:border-black" id="subjectAgeDay" disabled value="@this.ViewModel?.SubjectAge?.Days" />
+                </div>
+            </div>
+        </div>
+
+        @if (this.ViewModel.IsAgeSupported == true)
+        {
+        <div>
+            <div class="hidden" id="LookupTableVisualizer">
+                <div class="card card-body">
+                    <button type="button" class="btn btn-info" data-toggle="collapse" data-target="#LookupTableVisualizer">@Localization["Button.Hide"]</button>
+                    <WISC3LookupTableVisualizer Standardizer="this.ViewModel.StanderdizationPhase.Standardizer" SubjectAge="this.ViewModel.SubjectAge.Value" />
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+
+    <div class="flex-1 space-y-4 lg:space-y-0 lg:space-x-4 flex lg:flex-row flex-col text-sm">
+        <div class="flex-1 bg-gray-100 rounded-xl shadow-md justify-items-center p-2 focus-within:border-2 focus-within:border-gray-600">
+            <table class="table-fixed w-full border-2 border-gray-600 border-separate items-center rounded-xl bg-gray-600">
+                <thead class="text-white">
+                    <tr>
+                        <td rowspan="2" class="w-2/6 uppercase font-bold">@Localization["TestsDescription"]</td>
+                        <td rowspan="2" class="w-1/6 uppercase font-bold">@Localization["TestsRawResults"]</td>
+                        <td colspan="5" class="w-3/6 uppercase font-bold">@Localization["TestsPatternResults"]</td>
+                    </tr>
+                    <tr class="bg-gray-400">
+                        <td data-toggle="tooltip" class="uppercase font-bold" title="@Localization["TestsPatternResults.Verbal.MouseHover"]">@Localization["TestsPatternResults.Verbal"]</td>
+                        <td data-toggle="tooltip" class="uppercase font-bold" title="@Localization["TestsPatternResults.Realization.MouseHover"]">@Localization["TestsPatternResults.Realization"]</td>
+                        <td data-toggle="tooltip" class="uppercase font-bold" title="@Localization["TestsPatternResults.VerbalComprehension.MouseHover"]">@Localization["TestsPatternResults.VerbalComprehension"]</td>
+                        <td data-toggle="tooltip" class="uppercase font-bold" title="@Localization["TestsPatternResults.PerceptiveOrganization.MouseHover"]">@Localization["TestsPatternResults.PerceptiveOrganization"]</td>
+                        <td data-toggle="tooltip" class="uppercase font-bold" title="@Localization["TestsPatternResults.ProcessingVelocity.MouseHover"]">@Localization["TestsPatternResults.ProcessingVelocity"]</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var test in this.ViewModel.StanderdizationPhase.AllTests)
+                    {
+                    <tr class="bg-gray-100">
+                        @if (test.Mandatory)
+                        {
+                        <td class="bg-gray-400">@Localization[$"Test.{test.TestName}"]</td>
+                        }
+                        else
+                        {
+                        <td class="bg-gray-300">(@Localization[$"Test.{test.TestName}"])</td>
+                        }
+                        <td><input type="number" class="w-full border-0 bg-white" @bind="test.RawResult" /></td>
+
+                        <td @attributes="GetTestResultAttributes(test.RawResult, test.StandardVerbal)">@test.StandardVerbal</td>
+                        <td @attributes="GetTestResultAttributes(test.RawResult, test.StandardRealization)">@test.StandardRealization</td>
+                        <td @attributes="GetTestResultAttributes(test.RawResult, test.StandardVerbalComprehension)">@test.StandardVerbalComprehension</td>
+                        <td @attributes="GetTestResultAttributes(test.RawResult, test.StandardPerceptiveOrganization)">@test.StandardPerceptiveOrganization</td>
+                        <td @attributes="GetTestResultAttributes(test.RawResult, test.StandardProcessingVelocity)">@test.StandardProcessingVelocity</td>
+                    </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="bg-gray-100">
+                        <td class="bg-gray-400">@Localization["Test.SumResults"]</td>
+                        <td class="bg-gray-600"></td>
+                        <td>@this.ViewModel.StanderdizationPhase.VerbalTotal</td>
+                        <td>@this.ViewModel.StanderdizationPhase.RealizationTotal</td>
+                        <td>@this.ViewModel.StanderdizationPhase.VerbalComprehensionTotal</td>
+                        <td>@this.ViewModel.StanderdizationPhase.PerceptiveOrganizationTotal</td>
+                        <td>@this.ViewModel.StanderdizationPhase.ProcessingVelocityTotal</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"></td>
+                        <td colspan="2" class="border-t-2 bg-gray-100">@(this.ViewModel.StanderdizationPhase.VerbalTotal + this.ViewModel.StanderdizationPhase.RealizationTotal)</td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="flex-1 bg-gray-100 rounded-xl shadow-md justify-items-center p-2 divide-y-2 focus-within:border-2 focus-within:border-gray-600">
+            <table class="table-fixed rounded-xl bg-gray-600 border-gray-600 border-separate">
+                <thead class="text-white">
+                    <tr>
+                        <td class="w-2/6"></td>
+                        <td class="w-1/6 uppercase font-bold">@Localization["TestsPatternResults"]</td>
+                        <td class="w-1/6 uppercase font-bold">@Localization["QI"]</td>
+                        <td class="w-1/6 uppercase font-bold">@Localization["Percentil"]</td>
+                        <td class="w-1/6 uppercase font-bold">@Localization["ConfidenceInterval"]</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td class="uppercase font-bold"></td>
+                        <td class="uppercase font-bold"></td>
+                        <td class="uppercase font-bold"></td>
+                        <td class="uppercase font-bold">
+                            <select class="bg-gray-600 text-white text-xs" @bind="VisualizationConfidenceInterval">
+                                <option value="@ConfidenceIntervalEnum.Percentil90">90%</option>
+                                <option value="@ConfidenceIntervalEnum.Percentil95">95%</option>
+                            </select>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var calculatedQI in this.ViewModel.CalculatorPhase.AllCalculatedQI)
+                    {
+                    <tr>
+                        <td class="uppercase text-white font-bold">@Localization[$"QI.{calculatedQI.Name}"]</td>
+                        <td class="bg-gray-200">@calculatedQI.StandardResult</td>
+                        <td class="bg-gray-200">@calculatedQI.IndexQI</td>
+                        <td class="bg-gray-200">@calculatedQI.Percentil</td>
+                        @if (VisualizationConfidenceInterval == ConfidenceIntervalEnum.Percentil90)
+                        {
+                        <td class="bg-gray-200">@calculatedQI.ConfidenceInterval90?.LowerBound - @calculatedQI.ConfidenceInterval90?.UpperBound</td>
+                        }
+                        else if (VisualizationConfidenceInterval == ConfidenceIntervalEnum.Percentil95)
+                        {
+                        <td class="bg-gray-200">@calculatedQI.ConfidenceInterval95?.LowerBound - @calculatedQI.ConfidenceInterval95?.UpperBound</td>
+                        }
+                        else
+                        {
+                        <td class="bg-gray-200">??? - ???</td>
+                        }
+                    </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="mt-4 justify-items-center focus-within:border-2 focus-within:border-gray-600">
+                <canvas class="object-contain" @ref="QIResultsChart" />
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-auto flex flex-col lg:flex-row bg-gray-100 rounded-xl shadow-md justify-items-center">
+        <div class="flex-1">
+            <canvas class="object-contain" @ref="StandardResultsChart" />
+        </div>
+        <div class="flex-1">
+            <canvas class="object-contain" @ref="StandardFactorialIndicesChart" />
+        </div>
+    </div>
+</div>
