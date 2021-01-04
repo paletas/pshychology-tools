@@ -1513,3 +1513,14 @@ select {
     flex-direction: row;
   }
 }
+
+@media print {
+
+  .print\:flex {
+    display: flex;
+  }
+
+  .print\:hidden {
+    display: none;
+  }
+}

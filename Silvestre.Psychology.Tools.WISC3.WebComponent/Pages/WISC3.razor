@@ -4,11 +4,11 @@
 
 @inject Microsoft.Extensions.Localization.IStringLocalizer<WISC3> Localization
 
-<div class="md:hidden">
+<div class="md:hidden print:hidden">
     @Localization["DeviceSizeSmall"]
 </div>
 
-<div class="hidden md:flex flex-col space-y-4 flex-wrap mt-2">
+<div class="hidden md:flex print:flex flex-col space-y-4 flex-wrap mt-2">
     <div class="flex-auto w-full bg-yellow-300 bg-opacity-75 rounded ring-4 ring-yellow-200 p-1" role="alert">
         <b>@Localization["Warning"]</b> @Localization["WarningDetails"]
     </div>
