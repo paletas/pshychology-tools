@@ -25,9 +25,9 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
 
         public IEnumerable<WISC3TestViewModel> AllTests { get; set; }
 
-        public short VerbalTotal { get { return (short)this.AllTests.Sum(tr => tr.StandardVerbal ?? 0); } }
+        public short VerbalTotal { get { return (short)this.AllTests.Where(tr => tr.Mandatory).Sum(tr => tr.StandardVerbal ?? 0); } }
 
-        public short RealizationTotal { get { return (short)this.AllTests.Sum(tr => tr.StandardRealization ?? 0); } }
+        public short RealizationTotal { get { return (short)this.AllTests.Where(tr => tr.Mandatory).Sum(tr => tr.StandardRealization ?? 0); } }
 
         public short VerbalComprehensionTotal { get { return (short)this.AllTests.Sum(tr => tr.StandardVerbalComprehension ?? 0); } }
 
