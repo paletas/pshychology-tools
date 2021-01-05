@@ -123,6 +123,9 @@
   <data name="Button.ShowLookupTable" xml:space="preserve">
     <value>Ver Tabela</value>
   </data>
+  <data name="Button.StartNew" xml:space="preserve">
+    <value>Começar Novo</value>
+  </data>
   <data name="ConfidenceInterval" xml:space="preserve">
     <value>Intervalo de confiança</value>
   </data>

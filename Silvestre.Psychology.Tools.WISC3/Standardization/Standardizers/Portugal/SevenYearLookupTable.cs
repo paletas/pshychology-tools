@@ -354,7 +354,7 @@ namespace Silvestre.Psychology.Tools.WISC3.Standardization.Standardizers.Portuga
                 var r when r >= 27 && r <= 28 => 13,
                 29 => 14,
                 var r when r >= 30 && r <= 31 => 15,
-                var r when r >= 35 && r <= 35 => 16,
+                var r when r >= 32 && r <= 35 => 16,
                 var r when r >= 36 && r <= 39 => 17,
                 var r when r >= 40 && r <= 42 => 18,
                 var r when r >= 43 && r <= 45 => 19,

@@ -15,7 +15,7 @@
 
     <div class="flex-initial flex flex-col bg-gray-100 rounded-xl shadow-md items-left p-2 space-y-5">
         <div class="flex-auto flex flex-row divide-x divide-black space-x-4">
-            <div class="flex-auto">
+            <div class="flex-auto space-y-2">
                 <label class="font-extrabold block uppercase">@Localization["Input"]</label>
 
                 <div>
@@ -26,15 +26,21 @@
                     <label for="subjectBirthday" class="font-bold">@Localization["SubjectBirthday"]</label>
                     <input type="date" class="mt-0 block w-full px-0.5 border-0 border-b-2 border-gray-200 focus:ring-0 focus:border-black" id="subjectBirthday" required @bind="SubjectBirthday" />
                 </div>
-                @if (this.ViewModel.IsAgeSupported.HasValue)
-                {
-                <div>
-                    <svg class="block stroke-current stroke-2 w-10 h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <label class="break-words w-4">@Localization["Button.ShowLookupTable"]</label>
+
+                <div class="flex flex-row space-x-4 mx-auto justify-end">
+                    <button class="bg-gray-300 rounded-xl p-2 disabled:opacity-50" @onclick="ShowLookupTable">
+                        <svg class="block stroke-current stroke-2 w-6 h-6 mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        @Localization["Button.ShowLookupTable"]
+                    </button>
+                    <button class="bg-gray-300 rounded-xl p-2 disabled:opacity-50" @onclick="StartFresh">
+                        <svg class="block stroke-current stroke-2 w-6 h-6 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        @Localization["Button.StartNew"]
+                    </button>
                 </div>
-                }
             </div>
 
             <div class="flex-auto pl-4">                
@@ -51,17 +57,16 @@
             </div>
         </div>
 
-        @if (this.ViewModel.IsAgeSupported == true)
-        {
         <div>
-            <div class="hidden" id="LookupTableVisualizer">
+            @if (ReadyToTest)
+            {
+            <div class="@(ShowLookupTableVisualizer ? string.Empty : "hidden")" id="LookupTableVisualizer">
                 <div class="card card-body">
-                    <button type="button" class="btn btn-info" data-toggle="collapse" data-target="#LookupTableVisualizer">@Localization["Button.Hide"]</button>
                     <WISC3LookupTableVisualizer Standardizer="this.ViewModel.StanderdizationPhase.Standardizer" SubjectAge="this.ViewModel.SubjectAge.Value" />
                 </div>
             </div>
+            }
         </div>
-        }
     </div>
 
     <div class="flex-1 space-y-4 xl:space-y-0 xl:space-x-4 flex xl:flex-row flex-col text-sm">

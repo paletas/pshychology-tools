@@ -50,6 +50,9 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
                     this._testDescriptorPerAge = this._testStandardizer.GetTestDescriptorPerAge(this._testType, this._subjectAge.Value);
                     this.MinRawResult = this._testDescriptorPerAge.Boundaries.Min;
                     this.MaxRawResult = this._testDescriptorPerAge.Boundaries.Max;
+
+                    if (this.RawResult < this.MinRawResult || this.RawResult > this.MaxRawResult)
+                        this.RawResult = null;
                 }
 
                 UpdateStandardResults();

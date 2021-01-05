@@ -67,6 +67,10 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
             }
         }
 
+        public bool ReadyToTest { get; set; } = false;
+
+        public bool ShowLookupTableVisualizer { get; set; } = false;
+
         public WISC3ViewModel? ViewModel { get; private set; }
 
         private ConfidenceIntervalEnum VisualizationConfidenceInterval { get; set; } = ConfidenceIntervalEnum.Percentil95;
@@ -82,10 +86,14 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
             if (this.ViewModel == null) throw new ArgumentNullException(nameof(ViewModel));
 
             if (SubjectBirthday == null || TestDate == null)
+            {
                 this.ViewModel.SubjectAge = null;
+                ReadyToTest = false;
+            }
             else
             {
                 this.ViewModel.SubjectAge = DetermineAgeFrom(TestDate, SubjectBirthday);
+                ReadyToTest = true;
             }
         }
 
@@ -131,6 +139,17 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
             var days = timeSpentAsDateTime.Day - 1;
 
             return new Age(years, months, days);
+        }
+
+        private void StartFresh(MouseEventArgs e)
+        {
+            SubjectBirthday = TestDate = null;
+            this.ViewModel = new WISC3ViewModel(this.LocalizationService, SupportedCountries.Portugal);
+        }
+
+        private void ShowLookupTable(MouseEventArgs e)
+        {
+            ShowLookupTableVisualizer = !ShowLookupTableVisualizer;
         }
     }
 }
