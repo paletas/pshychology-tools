@@ -144,6 +144,27 @@
   <data name="QI" xml:space="preserve">
     <value>QI / Índice</value>
   </data>
+  <data name="QI.AverageComparison.Above" xml:space="preserve">
+    <value>Muito superior à média</value>
+  </data>
+  <data name="QI.AverageComparison.Below" xml:space="preserve">
+    <value>Média inferior</value>
+  </data>
+  <data name="QI.AverageComparison.ExtremelyAbove" xml:space="preserve">
+    <value>Média superior</value>
+  </data>
+  <data name="QI.AverageComparison.ExtremelyBelow" xml:space="preserve">
+    <value>Muito inferior à média</value>
+  </data>
+  <data name="QI.AverageComparison.FarAbove" xml:space="preserve">
+    <value>Superior à média</value>
+  </data>
+  <data name="QI.AverageComparison.FarBelow" xml:space="preserve">
+    <value>Inferior à médio</value>
+  </data>
+  <data name="QI.AverageComparison.OnAverage" xml:space="preserve">
+    <value>Média</value>
+  </data>
   <data name="QI.CompleteScale" xml:space="preserve">
     <value>Escala Completa</value>
   </data>
