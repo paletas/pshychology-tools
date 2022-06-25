@@ -19,40 +19,40 @@
             _velocitySubscale = new ProcessingVelocitySubscale();
         }
 
-        public QI? CalculateCompleteScaleQI(short standardTestResults)
+        public CalculatedIndexResult? CalculateCompleteScaleQI(short standardTestResults)
         {
             return GetQIResult(_completeSubscale, standardTestResults);
         }
 
-        public QI? CalculatePerceptiveOrganizationQI(short standardTestResults)
+        public CalculatedIndexResult? CalculatePerceptiveOrganizationQI(short standardTestResults)
         {
             return GetQIResult(_perceptiveOrganizationSubscale, standardTestResults);
         }
 
-        public QI? CalculateProcessingVelocityQI(short standardTestResults)
+        public CalculatedIndexResult? CalculateProcessingVelocityQI(short standardTestResults)
         {
             return GetQIResult(_velocitySubscale, standardTestResults);
         }
 
-        public QI? CalculateRealizationQI(short standardTestResults)
+        public CalculatedIndexResult? CalculateRealizationQI(short standardTestResults)
         {
             return GetQIResult(_realizationSubscale, standardTestResults);
         }
 
-        public QI? CalculateVerbalComprehensionQI(short standardTestResults)
+        public CalculatedIndexResult? CalculateVerbalComprehensionQI(short standardTestResults)
         {
             return GetQIResult(_verbalComprehensionSubscale, standardTestResults);
         }
 
-        public QI? CalculateVerbalQI(short standardTestResults)
+        public CalculatedIndexResult? CalculateVerbalQI(short standardTestResults)
         {
             return GetQIResult(_verbalSubscale, standardTestResults);
         }
 
-        private QI? GetQIResult(IConvertionScale convertionScale, short standardTestResults)
+        private CalculatedIndexResult? GetQIResult(IConvertionScale convertionScale, short standardTestResults)
         {
             if (convertionScale.IsResultSupported(standardTestResults))
-                return new QI(convertionScale.QI(standardTestResults), convertionScale.Percentil(standardTestResults), convertionScale.ConfidenceIntervalBottomBoundary(standardTestResults, ConfidenceIntervalPercentageEnum.Per90), convertionScale.ConfidenceIntervalBottomBoundary(standardTestResults, ConfidenceIntervalPercentageEnum.Per95));
+                return new CalculatedIndexResult(convertionScale.QI(standardTestResults), convertionScale.Percentil(standardTestResults), convertionScale.ConfidenceIntervalBottomBoundary(standardTestResults, ConfidenceIntervalPercentageEnum.Per90), convertionScale.ConfidenceIntervalBottomBoundary(standardTestResults, ConfidenceIntervalPercentageEnum.Per95));
             else
                 return null;
         }

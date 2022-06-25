@@ -160,6 +160,9 @@
                         <td class="bg-gray-200">@calculatedQI.StandardResult</td>
                         <td class="bg-gray-200">
                             @calculatedQI.IndexQI
+
+                            @if (calculatedQI.AverageComparisonResult != null)
+                            {
                             <svg class="w-8 h-8 float-right" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 @if (calculatedQI.AverageComparisonResult == AverageComparisonResultEnum.ExtremelyBelow)
                                 {  
@@ -198,6 +201,7 @@
 
                                 <title>@Localization[$"QI.AverageComparison.{Enum.GetName(typeof(AverageComparisonResultEnum), calculatedQI.AverageComparisonResult)}"]</title>
                             </svg>
+                            }
                         </td>
                         <td class="bg-gray-200">@calculatedQI.Percentil</td>
                         @if (VisualizationConfidenceInterval == ConfidenceIntervalEnum.Percentil90)

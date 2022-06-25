@@ -30,10 +30,10 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel
             { 130..int.MaxValue, AverageComparisonResultEnum.ExtremelyAbove }
         };
 
-        private readonly Func<short, QI?> _calculateQI;
+        private readonly Func<short, CalculatedIndexResult?> _calculateQI;
         private short? _standardResult;
 
-        public WISC3CalculatedQIViewModel(string qiName, Func<short, QI?> calculateQI)
+        public WISC3CalculatedQIViewModel(string qiName, Func<short, CalculatedIndexResult?> calculateQI)
         {
             this._calculateQI = calculateQI;
 

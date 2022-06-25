@@ -2,16 +2,16 @@
 {
     public interface IQICalculator
     {
-        QI? CalculateVerbalQI(short standardTestResults);
+        CalculatedIndexResult? CalculateVerbalQI(short standardTestResults);
 
-        QI? CalculateRealizationQI(short standardTestResults);
+        CalculatedIndexResult? CalculateRealizationQI(short standardTestResults);
 
-        QI? CalculateCompleteScaleQI(short standardTestResults);
+        CalculatedIndexResult? CalculateCompleteScaleQI(short standardTestResults);
 
-        QI? CalculateVerbalComprehensionQI(short standardTestResults);
+        CalculatedIndexResult? CalculateVerbalComprehensionQI(short standardTestResults);
 
-        QI? CalculatePerceptiveOrganizationQI(short standardTestResults);
+        CalculatedIndexResult? CalculatePerceptiveOrganizationQI(short standardTestResults);
 
-        QI? CalculateProcessingVelocityQI(short standardTestResults);
+        CalculatedIndexResult? CalculateProcessingVelocityQI(short standardTestResults);
     }
 }

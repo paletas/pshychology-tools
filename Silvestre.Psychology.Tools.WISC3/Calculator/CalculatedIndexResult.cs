@@ -1,8 +1,8 @@
 ﻿namespace Silvestre.Psychology.Tools.WISC3.Calculator
 {
-    public class QI
+    public class CalculatedIndexResult
     {
-        public QI(short value, decimal percentil, (short, short) confidenceInterval90, (short, short) confidenceInterval95)
+        public CalculatedIndexResult(short value, decimal percentil, (short, short) confidenceInterval90, (short, short) confidenceInterval95)
         {
             Value = value;
             Percentil = percentil;
