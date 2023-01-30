@@ -186,7 +186,7 @@ namespace Silvestre.Psychology.Tools.WISC3.Standardization.Standardizers.Portuga
 
         TestDescriptorPerAge IStandardizerLookupTable.GetImageDispositionDescriptor()
         {
-            return new TestDescriptorPerAge((0, 30));
+            return new TestDescriptorPerAge((0, 64));
         }
 
         public short GetImageDispositionStandardizedResult(short rawResult)
