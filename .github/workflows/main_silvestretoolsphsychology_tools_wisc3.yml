@@ -3,7 +3,7 @@ name: Build and deploy docker image - silvestre-tools-pshychology
 on:
   push:
     branches:
-      - master
+      - main
       - dev
   workflow_dispatch:
 
@@ -27,7 +27,7 @@ jobs:
         SHOULD_PUBLISH='true'
         VERSION_SUFFIX=""
         if [[ "$GITHUB_REF" == refs/heads/* ]]; then
-          if [ "$GITHUB_REF_NAME" == "master" ]; then
+          if [ "$GITHUB_REF_NAME" == "main" ]; then
             VERSION_SUFFIX=""
           elif [ "$GITHUB_REF_NAME" == "dev" ]; then
             VERSION_SUFFIX="-dev"
