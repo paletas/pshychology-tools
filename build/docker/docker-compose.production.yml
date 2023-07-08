@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+  silvestre.psychology.tools.wisc3.webcomponent:
+    image: ghcr.io/paletas/psychology-tools-wisc3:1.0
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+    ports:
+      - "10100:80"
+    networks:
+      - personal-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.psytoolswisc3.rule=Host(`psy.itssilvestre.com`) && PathPrefix(`/wisc3`)"
+      - "traefik.http.routers.psytoolswisc3.entrypoints=webs"
+      - "traefik.http.services.psytoolswisc3.loadbalancer.server.port=80"
+      - "traefik.http.routers.psytoolswisc3.tls=true"
+      - "traefik.http.routers.psytoolswisc3.tls.certresolver=le-http"
+
+networks:
+  personal-network:
+    driver: bridge
+    name: personal-network

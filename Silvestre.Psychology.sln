@@ -5,11 +5,13 @@ VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WISC3", "WISC3", "{FE03B08B-3B41-421B-8A3B-792587121944}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silvestre.Psychology.Tools.WISC3", "Silvestre.Psychology.Tools.WISC3\Silvestre.Psychology.Tools.WISC3.csproj", "{4ED2D85D-5866-41A5-B06C-81F71E58E6DB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silvestre.Psychology.Tools.WISC3", "src\Silvestre.Psychology.Tools.WISC3\Silvestre.Psychology.Tools.WISC3.csproj", "{4ED2D85D-5866-41A5-B06C-81F71E58E6DB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silvestre.Psychology.Tools.WISC3.WebComponent", "Silvestre.Psychology.Tools.WISC3.WebComponent\Silvestre.Psychology.Tools.WISC3.WebComponent.csproj", "{B8948265-2D06-4935-8F12-12638E4A5CBE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silvestre.Psychology.Tools.WISC3.WebComponent", "src\Silvestre.Psychology.Tools.WISC3.WebComponent\Silvestre.Psychology.Tools.WISC3.WebComponent.csproj", "{B8948265-2D06-4935-8F12-12638E4A5CBE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silvestre.Psychology.Tools.WebApp", "Silvestre.Psychology.Tools.WebApp\Silvestre.Psychology.Tools.WebApp.csproj", "{FAD34CEB-4B08-44B8-A3C5-8742B3654B1B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silvestre.Psychology.Tools.WebApp", "src\Silvestre.Psychology.Tools.WebApp\Silvestre.Psychology.Tools.WebApp.csproj", "{FAD34CEB-4B08-44B8-A3C5-8742B3654B1B}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{7AE77BAD-BD05-4D66-A8EC-DDDD2E4E1C2F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +31,10 @@ Global
 		{FAD34CEB-4B08-44B8-A3C5-8742B3654B1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FAD34CEB-4B08-44B8-A3C5-8742B3654B1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FAD34CEB-4B08-44B8-A3C5-8742B3654B1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7AE77BAD-BD05-4D66-A8EC-DDDD2E4E1C2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AE77BAD-BD05-4D66-A8EC-DDDD2E4E1C2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AE77BAD-BD05-4D66-A8EC-DDDD2E4E1C2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AE77BAD-BD05-4D66-A8EC-DDDD2E4E1C2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
