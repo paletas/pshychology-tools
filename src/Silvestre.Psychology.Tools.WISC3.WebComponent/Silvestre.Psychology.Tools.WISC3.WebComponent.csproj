@@ -7,7 +7,7 @@
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
     <UserSecretsId>bba66cf3-c85f-4cdc-81ed-614404f23ba0</UserSecretsId>
     <BlazorCacheBootResources>false</BlazorCacheBootResources>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
