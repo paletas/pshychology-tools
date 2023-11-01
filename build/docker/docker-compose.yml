@@ -1,0 +1,8 @@
+version: '3.9'
+
+services:
+  silvestre.psychology.tools.webapp:
+    image: ${DOCKER_REGISTRY-}silvestrepsychologytoolswebapp
+    build:
+      context: ..\..
+      dockerfile: src/Silvestre.Psychology.Tools.WebApp/Dockerfile

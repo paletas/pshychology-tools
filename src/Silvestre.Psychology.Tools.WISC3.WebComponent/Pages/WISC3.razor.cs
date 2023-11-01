@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
-using Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel;
+using Silvestre.Psychology.Tools.ViewModels;
+using Silvestre.Psychology.Tools.WISC3.ViewModels;
 using System;
 using System.Collections.Generic;
 
@@ -18,7 +19,7 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
 
         protected override void OnInitialized()
         {
-            this.ViewModel = new WISC3ViewModel(this.LocalizationService, SupportedCountries.Portugal);
+            this.ViewModel = new WISC3ViewModel(this.Localization, SupportedCountries.Portugal);
             this.ViewModel.OnStandardResultsUpdated += WISC3ViewModel_OnStandardResultsUpdated;
 
             this.MasterViewModel.ToolName = "WISC-III";
@@ -40,7 +41,7 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
         protected IJSRuntime JsRuntime { get; set; }
 
         [Inject]
-        protected IStringLocalizer<WISC3> LocalizationService { get; set; }
+        protected IStringLocalizer<WISC3> Localization { get; set; }
 
         [Inject]
         protected PsychologyToolsViewModel MasterViewModel { get; set; }
@@ -144,7 +145,7 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
         private void StartFresh(MouseEventArgs e)
         {
             SubjectBirthday = TestDate = null;
-            this.ViewModel = new WISC3ViewModel(this.LocalizationService, SupportedCountries.Portugal);
+            this.ViewModel = new WISC3ViewModel(this.Localization, SupportedCountries.Portugal);
         }
 
         private void ShowLookupTable(MouseEventArgs e)

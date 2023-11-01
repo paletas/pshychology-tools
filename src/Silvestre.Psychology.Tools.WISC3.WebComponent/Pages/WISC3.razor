@@ -1,9 +1,15 @@
 ﻿@page "/wisc3"
+@attribute [RenderModeInteractiveWebAssembly(prerender: true)]
 
 @using Silvestre.Psychology.Tools.WISC3.WebComponent.Components;
-@using Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel;
 
-@inject Microsoft.Extensions.Localization.IStringLocalizer<WISC3> Localization
+<PageTitle>WISC-III</PageTitle>
+
+<HeadContent>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="keywords" content="silvestre,wisc3,wisc-iii,wisc,psychology" />
+    <meta name="description" content="Uma calculadora WISC-III para ajudar a conseguir resultados de confiança muito mais rápido, ajustado para o universo Português." />
+</HeadContent>
 
 <div class="md:hidden print:hidden">
     @Localization["DeviceSizeSmall"]
