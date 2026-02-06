@@ -31,20 +31,22 @@
         };                                          
 
         var blazorErrorUI = document.querySelector('#blazor-error-ui');
-        var blazorErrorObserver = new MutationObserver(function (mutations) {
-            mutations.forEach(mutation => {
-                if (mutation.type === 'attributes') {
-                    if (mutation.attributeName === 'style') {
-                        if (mutation.target.style.display === 'block') {
-                            blazorErrorUI.__x.$data.visible = true;
-                            blazorErrorUI.removeAttribute('style');
+        if (blazorErrorUI) {
+            var blazorErrorObserver = new MutationObserver(function (mutations) {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'attributes') {
+                        if (mutation.attributeName === 'style') {
+                            if (mutation.target.style.display === 'block') {
+                                blazorErrorUI.__x.$data.visible = true;
+                                blazorErrorUI.removeAttribute('style');
+                            }
                         }
                     }
-                }
+                });
             });
-        });
 
-        blazorErrorObserver.observe(blazorErrorUI, { attributes: true });
+            blazorErrorObserver.observe(blazorErrorUI, { attributes: true });
+        }
     </script>
 </body>
 </html>

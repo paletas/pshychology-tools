@@ -38,13 +38,13 @@ namespace Silvestre.Psychology.Tools.WISC3.WebComponent.Pages
         }
 
         [Inject]
-        protected IJSRuntime JsRuntime { get; set; }
+        protected IJSRuntime JsRuntime { get; set; } = default!;
 
         [Inject]
-        protected IStringLocalizer<WISC3> Localization { get; set; }
+        protected IStringLocalizer<WISC3> Localization { get; set; } = default!;
 
         [Inject]
-        protected PsychologyToolsViewModel MasterViewModel { get; set; }
+        protected PsychologyToolsViewModel MasterViewModel { get; set; } = default!;
 
         private DateTime? _subjectBirthday;
         public DateTime? SubjectBirthday

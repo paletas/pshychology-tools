@@ -12,4 +12,4 @@ builder.Services.AddLocalization();
 
 var host = builder.Build();
 
-await builder.Build().RunAsync();
+await host.RunAsync();
