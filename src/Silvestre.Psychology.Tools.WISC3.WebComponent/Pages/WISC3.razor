@@ -1,9 +1,12 @@
-﻿@page "/wisc3"
+﻿@using Silvestre.Psychology.Tools.WISC3.WebComponent.Components;
 
-@using Silvestre.Psychology.Tools.WISC3.WebComponent.Components;
-@using Silvestre.Psychology.Tools.WISC3.WebComponent.ViewModel;
+<PageTitle>WISC-III</PageTitle>
 
-@inject Microsoft.Extensions.Localization.IStringLocalizer<WISC3> Localization
+<HeadContent>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="keywords" content="silvestre,wisc3,wisc-iii,wisc,psychology" />
+    <meta name="description" content="Uma calculadora WISC-III para ajudar a conseguir resultados de confiança muito mais rápido, ajustado para o universo Português." />
+</HeadContent>
 
 <div class="md:hidden print:hidden">
     @Localization["DeviceSizeSmall"]
@@ -221,8 +224,10 @@
                 </tbody>
             </table>
 
-            <div class="mt-4 justify-items-center focus-within:border-2 focus-within:border-gray-600">
-                <canvas class="object-contain" @ref="QIResultsChart" />
+            <div class="mt-4 w-full justify-items-center focus-within:border-2 focus-within:border-gray-600">
+                <div class="w-full">
+                    <canvas class="w-full object-contain" @ref="QIResultsChart" />
+                </div>
             </div>
         </div>
     </div>

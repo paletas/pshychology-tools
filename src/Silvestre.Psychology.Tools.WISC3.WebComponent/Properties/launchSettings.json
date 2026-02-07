@@ -1,16 +1,4 @@
 {
-  "iisSettings": {
-    "windowsAuthentication": true,
-    "anonymousAuthentication": true,
-    "iis": {
-      "applicationUrl": "http://localhost/Silvestre.Pshychology.Tools.WISC3.WebComponent",
-      "sslPort": 0
-    },
-    "iisExpress": {
-      "applicationUrl": "http://localhost:65196/",
-      "sslPort": 44399
-    }
-  },
   "profiles": {
     "IIS Express": {
       "commandName": "IISExpress",
@@ -20,7 +8,7 @@
       },
       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}"
     },
-    "Silvestre.Pshychology.Tools.WebApp": {
+    "Silvestre.Pshychology.Tools.WISC3.WebComponents": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
@@ -35,6 +23,18 @@
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
       "publishAllPorts": true,
       "useSSL": true
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": true,
+    "anonymousAuthentication": true,
+    "iis": {
+      "applicationUrl": "http://localhost/Silvestre.Pshychology.Tools.WISC3.WebComponent",
+      "sslPort": 0
+    },
+    "iisExpress": {
+      "applicationUrl": "http://localhost:65196/",
+      "sslPort": 44399
     }
   }
 }
