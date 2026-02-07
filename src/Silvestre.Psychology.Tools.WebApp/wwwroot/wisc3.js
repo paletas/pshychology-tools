@@ -302,6 +302,8 @@ wisc3.drawQiResultsChart = function (element, points) {
             }]
         },
         options: {
+            maintainAspectRatio: true,
+            responsive: true,
             scales: {
                 xAxes: [{
                     ticks: {
