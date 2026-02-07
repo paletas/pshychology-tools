@@ -16,7 +16,11 @@ jobs:
       id: version
       run: |
         $xml=[xml](Get-Content .\Silvestre.Psychology.Tools.WISC3.WebComponent.csproj)
-        $version=$xml.Project.PropertyGroup.Version.Trim()
+        $versionNode=$xml.SelectSingleNode('//Project/PropertyGroup/Version')
+        if (-not $versionNode) {
+          throw 'Version not found in csproj.'
+        }
+        $version=$versionNode.InnerText.Trim()
         echo "project_version=$version" >> $env:GITHUB_OUTPUT
       shell: pwsh
       working-directory: src/Silvestre.Psychology.Tools.WISC3.WebComponent
