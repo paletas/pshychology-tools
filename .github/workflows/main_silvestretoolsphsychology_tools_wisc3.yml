@@ -44,7 +44,7 @@ jobs:
         fi
         echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
         echo "SHOULD_PUBLISH=$SHOULD_PUBLISH" >> $GITHUB_ENV
-        docker build -f src/Silvestre.Psychology.Tools.WISC3.WebComponent/Dockerfile \
+        docker build -f src/Silvestre.Psychology.Tools.WebApp/Dockerfile \
           --tag "ghcr.io/paletas/pshychology-tools-wisc3:${VERSION}${VERSION_SUFFIX}" \
           --tag "ghcr.io/paletas/pshychology-tools-wisc3:$(echo "${VERSION}" | cut -d. -f1,2)${VERSION_SUFFIX}" \
           .
