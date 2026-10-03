@@ -1,0 +1,12 @@
+[
+  {
+    "id": "D1",
+    "band": "06y00m",
+    "test": "Comprehension",
+    "raw": 5,
+    "appScaled": 11,
+    "manualScaled": 10,
+    "source": "WISC-III PT manual norm tables, page 3 (6 anos), read from a scan; needs human confirmation",
+    "status": "open"
+  }
+]
