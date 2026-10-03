@@ -1,6 +1,6 @@
 // Test-only. Never imported by src/.
 // Prediction of what the NEW app must show for a case, derived from the old app's recorded outcome plus
-// the deliberate fixes (4 tags). The key sets come from the oracle golden indices, never from data/.
+// the deliberate fixes (4 tags; manual-correction carries the correction ids). The key sets come from the oracle golden indices, never from data/.
 import type { Age, CaseInput, IndexName, IndexSnapshot, Snapshot, TestSnapshot } from '../../src/engine/types';
 import { INDEX_NAMES } from '../../src/engine/types';
 
@@ -32,15 +32,23 @@ export interface OldResult {
   throwStage: 'age' | 'raw' | null;
   throwAt: { test: string; raw: number } | null;
   bandId: string | null;
+  correctionsHit?: string[];
   oldCorrected?: OldResult;
 }
 
+// One row per corrected cell (golden/corrections.json). Scaled rows: band/age/test/raw, old {throws}|{scaled}, corrected = 5 columns.
+// Index rows: index/sum/field, old and corrected values (percentile as string), oldRow.
 export interface GoldenCorrection {
   id: string;
-  band: string;
-  test: string;
-  raw: number;
-  corrected: (number | null)[];
+  kind: 'scaled' | 'index';
+  band?: string;
+  test?: string;
+  raw?: number;
+  index?: string;
+  sum?: number;
+  field?: 'iq' | 'percentile' | 'ci95Lower' | 'ci95Upper';
+  old: any;
+  corrected: any;
 }
 
 export type KeySets = Record<IndexName, Set<number>>;
@@ -76,21 +84,25 @@ export function fixedModel(
   old: OldResult,
   keySets: KeySets,
   corrections: GoldenCorrection[],
-): { expected: ExpectedCase; tags: Tag[] } {
+): { expected: ExpectedCase; tags: Tag[]; correctionIds: string[] } {
   const tags: Tag[] = [];
+  let correctionIds: string[] = [];
   if (!strictlySupported(old.age)) {
     if (old.throws && old.throwStage === 'age') tags.push('gate-high-throw');
     else if (old.supported && !old.throws) tags.push('gate-low');
-    return { expected: blocked(old.age), tags };
+    return { expected: blocked(old.age), tags, correctionIds };
   }
 
   let base = old;
-  if (old.throws && old.throwStage === 'raw') {
-    const at = old.throwAt;
-    const hit = at && corrections.some((c) => c.band === old.bandId && c.test === at.test && c.raw === at.raw);
-    if (!hit || !old.oldCorrected) throw new Error('unexpected old raw-stage throw');
+  const hit = old.correctionsHit ?? [];
+  if (hit.length > 0) {
+    if (!old.oldCorrected) throw new Error('correctionsHit without oldCorrected');
+    for (const id of hit) if (!corrections.some((c) => c.id === id)) throw new Error(`unknown correction id ${id}`);
     base = old.oldCorrected;
+    correctionIds = [...hit];
     tags.push('manual-correction');
+  } else if (old.throws && old.throwStage === 'raw') {
+    throw new Error('unexpected old raw-stage throw');
   } else if (old.throws) {
     throw new Error('unexpected old throw for a supported age');
   }
@@ -135,6 +147,7 @@ export function fixedModel(
       indicesShown: base.indicesShown, indices, charts,
     },
     tags,
+    correctionIds,
   };
 }
 

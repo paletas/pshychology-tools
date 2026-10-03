@@ -54,7 +54,7 @@ public sealed record OldResult(
     Dictionary<string, OldTest>? Tests, Dictionary<string, int>? Sums,
     bool IndicesShown, Dictionary<string, OldIndex?>? Indices, JsonNode? Charts,
     string? ThrowStage = null, ThrowAt? ThrowAt = null, string? BandId = null);
-public sealed record ScenarioResult(string Id, OldResult Old, OldResult? OldCorrected = null);
+public sealed record ScenarioResult(string Id, OldResult Old, List<string> CorrectionsHit, OldResult? OldCorrected = null);
 
 public static class ScenarioDriver
 {
@@ -72,20 +72,11 @@ public static class ScenarioDriver
     public static ScenarioResult Run(Scenario s)
     {
         var old = RunCore(s);
-        OldResult? corrected = null;
-        if (old.Throws && old.ThrowStage == "raw" && old.ThrowAt != null)
-        {
-            var c = CorrectionsLoader.Find(old.BandId, old.ThrowAt.Test, old.ThrowAt.Raw);
-            if (c != null)
-            {
-                var raws = new Dictionary<string, int?>(s.Raw) { [c.Test] = c.EquivalentRaw };
-                corrected = RunCore(s with { Raw = raws });
-            }
-        }
-        return new ScenarioResult(s.Id, old, corrected);
+        var (corrected, hits) = CorrectedModel.Compute(s, old);
+        return new ScenarioResult(s.Id, old, hits, hits.Count > 0 ? corrected : null);
     }
 
-    static OldResult RunCore(Scenario s)
+    internal static OldResult RunCore(Scenario s)
     {
         var age = Catalog.DetermineAgeFrom(Catalog.ParseIso(s.TestDate), Catalog.ParseIso(s.BirthDate));
         var ageArr = Catalog.AgeArr(age);
@@ -154,31 +145,92 @@ public static class ScenarioDriver
         }
     }
 
-    // Extra seeded cases forced into the correction's band with the gap raw (only used when no random case hits one).
-    public static List<Scenario> GenerateForced(int count, int firstIndex)
+    static readonly string[] ForcedTestDates = { "2023-05-10", "2024-06-20", "2025-07-30" };
+    static readonly Dictionary<string, short[]> ForcedSums = new()
     {
-        var c = CorrectionsLoader.All[0];
-        var band = Catalog.Bands.Single(b => b.Id == c.Band);
-        var rng = new Random(Catalog.Seed + 1);
-        var first = new DateTime(2018, 1, 1);
-        int span = (new DateTime(2026, 12, 31) - first).Days;
-        int minDays = Catalog.DaysFor(band.Year, 6, 0), maxDays = Catalog.DaysFor(band.Year, 11, 30);
-        var list = new List<Scenario>();
-        for (int i = 0; i < count; i++)
+        ["D4"] = new short[] { 82, 82, 82 }, ["D5"] = new short[] { 84, 84, 84 }, ["D6"] = new short[] { 63, 63, 63 },
+        ["D7"] = new short[] { 25, 26, 25 }, ["D8"] = new short[] { 40, 58, 76 }
+    };
+
+    static Scenario ForcedCase(int index, string testIso, BandData band, Dictionary<string, int?> raw)
+    {
+        var test = Catalog.ParseIso(testIso);
+        var birth = test.AddDays(-Catalog.DaysFor(band.Age[0], band.Age[1], band.Age[2]));
+        return new Scenario($"f{index:00000}", Catalog.Iso(test), Catalog.Iso(birth), raw);
+    }
+
+    // The scaled -> lowest raw map of one test column in a band (from the golden enumeration).
+    static SortedDictionary<int, int> ScaledToRaw(BandData band, string testId, int column)
+    {
+        var map = new SortedDictionary<int, int>();
+        foreach (var row in band.Tests[testId].Rows)
+            if (row[column] != null && !map.ContainsKey(row[column]!.Value)) map[row[column]!.Value] = row[0]!.Value;
+        return map;
+    }
+
+    // Depth-first search for one raw per contributing test whose scaled values add up to the target (null when unreachable).
+    static Dictionary<string, int>? SolveSum(BandData band, string indexName, int target)
+    {
+        int column = Array.IndexOf(Catalog.IndexNames, indexName) switch { 0 => 1, 1 => 2, 3 => 3, 4 => 4, 5 => 5, _ => throw new InvalidOperationException(indexName) };
+        bool mandatoryOnly = indexName is "verbal" or "realization";
+        var tests = Catalog.RowOrder
+            .Where(t => band.Tests[t.ToString()].Rows.Any(r => r[column] != null))
+            .Where(t => !mandatoryOnly || Catalog.Standardizer.GetTestDescriptor(t).Mandatory)
+            .Select(t => t.ToString()).ToList();
+        var maps = tests.Select(t => ScaledToRaw(band, t, column)).ToList();
+        var chosen = new int[tests.Count];
+        bool Dfs(int i, int remaining)
         {
-            var test = first.AddDays(rng.Next(0, span + 1));
-            var birth = test.AddDays(-rng.Next(minDays, maxDays + 1));
-            var probe = NewViewModel(Catalog.DetermineAgeFrom(test, birth));
-            var raw = new Dictionary<string, int?>();
-            foreach (var type in Catalog.RowOrder)
+            if (i == tests.Count) return remaining == 0;
+            foreach (var (scaled, raw) in maps[i])
             {
-                bool omit = !Catalog.Standardizer.GetTestDescriptor(type).Mandatory && rng.NextDouble() < 0.25;
-                var t = probe.StanderdizationPhase[type.ToString()];
-                int v = rng.Next(t.MinRawResult!.Value, t.MaxRawResult!.Value + 1);
-                raw[type.ToString()] = omit ? null : v;
+                chosen[i] = raw;
+                if (Dfs(i + 1, remaining - scaled)) return true;
             }
-            raw[c.Test] = c.Raw;
-            list.Add(new Scenario($"f{firstIndex + i:00000}", Catalog.Iso(test), Catalog.Iso(birth), raw));
+            return false;
+        }
+        if (!Dfs(0, target)) return null;
+        return tests.Select((t, i) => (t, i)).ToDictionary(x => x.t, x => chosen[x.i]);
+    }
+
+    // 3 forced scenarios per correction id so that every id is hit (plan step 38).
+    public static List<Scenario> GenerateForcedPerId(int firstIndex)
+    {
+        var list = new List<Scenario>();
+        int n = firstIndex;
+        Dictionary<string, int?> Midpoints(BandData band) =>
+            Catalog.RowOrder.ToDictionary(t => t.ToString(), t => (int?)((band.Tests[t.ToString()].Min + band.Tests[t.ToString()].Max) / 2));
+        foreach (var c in CorrectionsLoader.All)
+        {
+            if (c.Kind == "scaled")
+            {
+                var band = Catalog.Bands.Single(b => b.Id == c.Band);
+                foreach (var date in ForcedTestDates)
+                {
+                    var raw = Midpoints(band);
+                    raw[c.Test!] = c.Cells[0].Raw;
+                    list.Add(ForcedCase(n++, date, band, raw));
+                }
+            }
+            else
+            {
+                var sums = ForcedSums[c.Id];
+                for (int i = 0; i < 3; i++)
+                {
+                    BandData? used = null;
+                    Dictionary<string, int>? solution = null;
+                    foreach (var band in Catalog.Bands.OrderBy(b => b.Id == "10y00m" ? 0 : 1))
+                    {
+                        solution = SolveSum(band, c.Index!, sums[i]);
+                        if (solution != null) { used = band; break; }
+                    }
+                    if (used == null) throw new InvalidOperationException($"{c.Id}: no band reaches {c.Index} sum {sums[i]}");
+                    Console.WriteLine($"forced {c.Id} {c.Index} sum={sums[i]} band={used.Id}");
+                    var raw = Midpoints(used);
+                    foreach (var (t, r) in solution!) raw[t] = r;
+                    list.Add(ForcedCase(n++, ForcedTestDates[i], used, raw));
+                }
+            }
         }
         return list;
     }

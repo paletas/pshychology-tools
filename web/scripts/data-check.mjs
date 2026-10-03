@@ -121,18 +121,50 @@ for (const n of INDEX_NAMES) {
 const idxFiles = readdirSync(join(dataDir, 'indices')).filter((f) => f.endsWith('.json'));
 if (idxFiles.length !== 6) err(`expected 6 index files, got ${idxFiles.length}`);
 
-// corrections file (outside the bundle)
+// corrections file (outside the bundle), schema v2
+const IDX_FIELDS = ['iq', 'percentile', 'ci95Lower', 'ci95Upper'];
+let corrSummary = 'corrections: not checked';
 if (!existsSync(corrFile)) err(`missing corrections file ${corrFile}`);
 else {
   const c = json(corrFile);
-  const fields = ['id', 'band', 'test', 'raw', 'old', 'scaled', 'equivalentRaw', 'oldSource', 'source', 'confirmedBy', 'confirmedOn'];
+  if (c.schemaVersion !== 2) err('corrections: schemaVersion must be 2');
   if (!Array.isArray(c.corrections) || c.corrections.length === 0) err('corrections: empty');
   else {
+    const ids = new Set();
+    let scaledCells = 0;
+    let indexCells = 0;
+    const indicesData = {};
+    for (const n of INDEX_NAMES) indicesData[n] = json(join(dataDir, 'indices', `${n}.json`));
     for (const x of c.corrections) {
-      for (const f of fields) if (!(f in x)) err(`correction ${x.id}: missing ${f}`);
-      const got = subtests[x.band] ? scaledFor(subtests[x.band], x.test, x.raw) : null;
-      if (got !== x.scaled) err(`correction ${x.id}: data scaledFor(${x.band},${x.test},${x.raw})=${got}, expected ${x.scaled}`);
+      for (const f of ['id', 'kind', 'table', 'cells', 'oldSource', 'source', 'approval']) if (!(f in x)) err(`correction ${x.id}: missing ${f}`);
+      if (ids.has(x.id)) err(`correction ${x.id}: duplicate id`);
+      ids.add(x.id);
+      if (!Array.isArray(x.cells) || x.cells.length === 0) {
+        err(`correction ${x.id}: no cells`);
+        continue;
+      }
+      if (x.kind === 'scaled') {
+        for (const f of ['band', 'test']) if (!(f in x)) err(`correction ${x.id}: missing ${f}`);
+        for (const cell of x.cells) {
+          for (const f of ['raw', 'old', 'new']) if (!(f in cell)) err(`correction ${x.id}: cell missing ${f}`);
+          const got = subtests[x.band] ? scaledFor(subtests[x.band], x.test, cell.raw) : null;
+          if (got !== cell.new) err(`correction ${x.id}: data scaledFor(${x.band},${x.test},${cell.raw})=${got}, expected ${cell.new}`);
+          scaledCells++;
+        }
+      } else if (x.kind === 'index') {
+        if (!INDEX_NAMES.includes(x.index)) err(`correction ${x.id}: unknown index ${x.index}`);
+        if (!IDX_FIELDS.includes(x.field)) err(`correction ${x.id}: unknown field ${x.field}`);
+        for (const cell of x.cells) {
+          for (const f of ['sum', 'old', 'new']) if (!(f in cell)) err(`correction ${x.id}: cell missing ${f}`);
+          const e = indicesData[x.index]?.[String(cell.sum)];
+          const got = !e ? undefined : x.field === 'iq' ? e.iq : x.field === 'percentile' ? e.percentile : x.field === 'ci95Lower' ? e.ci95[0] : e.ci95[1];
+          if (got !== cell.new) err(`correction ${x.id}: data ${x.index}/${cell.sum}.${x.field}=${got}, expected ${cell.new}`);
+          indexCells++;
+        }
+      } else err(`correction ${x.id}: unknown kind ${x.kind}`);
     }
+    if (scaledCells !== 9 || indexCells !== 42 || ids.size !== 9) err(`corrections: expected scaled=9 index=42 ids=9, got scaled=${scaledCells} index=${indexCells} ids=${ids.size}`);
+    corrSummary = `corrections: scaled=${scaledCells} index=${indexCells} ids=${ids.size}`;
   }
 }
 
@@ -141,4 +173,5 @@ if (errors.length) {
   console.error(`data-check FAILED (${errors.length} problems)`);
   process.exit(1);
 }
+console.log(corrSummary);
 console.log('data-check OK');

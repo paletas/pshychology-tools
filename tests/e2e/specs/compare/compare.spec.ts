@@ -27,6 +27,7 @@ if (!existsSync(casesFile) || !existsSync(predFile)) throw new Error('run script
 interface Prediction {
   id: string;
   old: OldResult;
+  correctionsHit?: string[];
   oldCorrected?: OldResult;
 }
 const cases: CaseRecord[] = JSON.parse(readFileSync(casesFile, 'utf8'));
@@ -97,7 +98,7 @@ for (const c of cases) {
     try {
       if (!pred) throw new Error('no prediction for case');
       const input: CaseInput = { testDate: c.testDate, birthDate: c.birthDate, raw: c.raw };
-      const model = fixedModel(input, { ...pred.old, oldCorrected: pred.oldCorrected }, keySets, corrections);
+      const model = fixedModel(input, { ...pred.old, correctionsHit: pred.correctionsHit, oldCorrected: pred.oldCorrected }, keySets, corrections);
       tags = model.tags;
       const expOld = expectedOld(pred.old);
       const expNew = expectedNew(model.expected);

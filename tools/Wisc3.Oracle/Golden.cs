@@ -41,10 +41,10 @@ public static class Golden
         var gapsBefore = Catalog.AllGaps();
         var corrections = CorrectionsLoader.All;
         var gapKeys = gapsBefore.Select(g => $"{g.band}|{g.test}|{g.raw}").OrderBy(x => x, StringComparer.Ordinal).ToList();
-        var corrKeys = corrections.Select(c => $"{c.Band}|{c.Test}|{c.Raw}").OrderBy(x => x, StringComparer.Ordinal).ToList();
+        var corrKeys = corrections.Where(c => c.Kind == "scaled").SelectMany(c => c.Cells.Where(x => x.OldThrows).Select(x => $"{c.Band}|{c.Test}|{x.Raw}")).OrderBy(x => x, StringComparer.Ordinal).ToList();
         var correctionErrors = CorrectionsLoader.Validate();
         int matched = gapKeys.Intersect(corrKeys).Count();
-        Console.WriteLine($"bands={bands.Count} distinctFingerprints={distinct} scaledOutOfRange={outOfRange} gapsBefore={gapsBefore.Count} gapsMatchedCorrections={matched}");
+        Console.WriteLine($"bands={bands.Count} distinctFingerprints={distinct} scaledOutOfRange={outOfRange} gapsBefore={gapsBefore.Count} gapsMatchedCorrections={matched} corrections={corrections.Count} scaledCells={CorrectionsLoader.ScaledCellCount} indexCells={CorrectionsLoader.IndexCellCount}");
         if (bands.Count != 22 || distinct != 22 || outOfRange != 0 || nonMonotonic != 0 || !gapKeys.SequenceEqual(corrKeys) || correctionErrors.Count != 0)
         {
             Console.Error.WriteLine($"ASSERTION FAILED: bands={bands.Count} distinct={distinct} outOfRange={outOfRange} nonMonotonic={nonMonotonic}");
@@ -55,15 +55,40 @@ public static class Golden
         }
         Write(outDir, "subtests.json", new { bands });
 
-        // ---- corrections.json
-        Write(outDir, "corrections.json", corrections.Select(c =>
+        // ---- corrections.json: one row per corrected cell
+        var indexTables = Catalog.Indices().ToDictionary(i => i.Name);
+        var correctionRows = new List<object>();
+        foreach (var c in corrections)
         {
-            var band = bands.Single(b => b.Id == c.Band);
-            var eq = band.Tests[c.Test].Rows.Single(r => r[0] == c.EquivalentRaw);
-            var corrected = new int?[5];
-            for (int i = 0; i < 5; i++) corrected[i] = eq[i + 1] == null ? null : c.Scaled;
-            return new { c.Id, c.Band, age = band.Age, c.Test, c.Raw, old = new { throws = true }, corrected, c.Source, c.ConfirmedOn };
-        }).ToList());
+            if (c.Kind == "scaled")
+            {
+                var band = bands.Single(b => b.Id == c.Band);
+                var tb = band.Tests[c.Test!];
+                foreach (var cell in c.Cells)
+                {
+                    var oldRow = tb.Rows.Single(r => r[0] == cell.Raw);
+                    var shape = cell.OldThrows ? tb.Rows.Single(r => r[0] == c.EquivalentRaw) : oldRow;
+                    var corrected = new int?[5];
+                    for (int i = 0; i < 5; i++) corrected[i] = shape[i + 1] == null ? null : cell.NewInt;
+                    object oldValue = cell.OldThrows ? new { throws = true } : new { scaled = oldRow.Skip(1).ToArray() };
+                    correctionRows.Add(new { c.Id, c.Kind, c.Band, age = band.Age, c.Test, cell.Raw, old = oldValue, corrected, c.Source, c.Approval });
+                }
+            }
+            else
+            {
+                var idx = indexTables[c.Index!];
+                foreach (var cell in c.Cells)
+                {
+                    var r = idx.Calculate((short)cell.Sum)!;
+                    var p = CorrectionsLoader.PatchIndex(c.Index!, (short)cell.Sum, r, out _)!;
+                    var oldRowObj = new { iq = (int)r.Value, percentile = r.Percentil.ToString(CultureInfo.InvariantCulture), ci90 = new int[] { r.ConfidenceInterval90.BottomBoundary, r.ConfidenceInterval90.TopBoundary }, ci95 = new int[] { r.ConfidenceInterval95.BottomBoundary, r.ConfidenceInterval95.TopBoundary } };
+                    object oldValue = c.Field == "percentile" ? r.Percentil.ToString(CultureInfo.InvariantCulture) : int.Parse(CorrectionsLoader.IndexFieldOld(r, c.Field!), CultureInfo.InvariantCulture);
+                    object newValue = c.Field == "percentile" ? p.Percentil.ToString(CultureInfo.InvariantCulture) : int.Parse(CorrectionsLoader.IndexFieldOld(p, c.Field!), CultureInfo.InvariantCulture);
+                    correctionRows.Add(new { c.Id, c.Kind, index = c.Index, cell.Sum, c.Field, old = oldValue, corrected = newValue, oldRow = oldRowObj, c.Source, c.Approval });
+                }
+            }
+        }
+        Write(outDir, "corrections.json", correctionRows);
 
         // ---- indices.json
         var indices = Catalog.Indices();
@@ -126,15 +151,12 @@ public static class Golden
         // ---- scenarios.json
         var scenarios = ScenarioDriver.Generate(10000);
         var results = scenarios.Select(ScenarioDriver.Run).ToList();
-        if (!results.Any(r => r.Old.ThrowStage == "raw" && r.OldCorrected != null))
-        {
-            // No random case hit a correction: add 20 seeded cases forced into the correction's band with the gap raw.
-            var forced = ScenarioDriver.GenerateForced(20, 10000);
-            scenarios.AddRange(forced);
-            results.AddRange(forced.Select(ScenarioDriver.Run));
-            Console.WriteLine($"forcedC1={forced.Count}");
-        }
-        Write(outDir, "scenarios.json", scenarios.Zip(results, (s, r) => new { s.Id, s.TestDate, s.BirthDate, s.Raw, old = r.Old, oldCorrected = r.OldCorrected }).ToList());
+        // 3 forced scenarios per correction id so that every id is hit at least 3 times.
+        var forced = ScenarioDriver.GenerateForcedPerId(10000);
+        scenarios.AddRange(forced);
+        results.AddRange(forced.Select(ScenarioDriver.Run));
+        Console.WriteLine("forcedPerId=3");
+        Write(outDir, "scenarios.json", scenarios.Zip(results, (s, r) => new { s.Id, s.TestDate, s.BirthDate, s.Raw, old = r.Old, correctionsHit = r.CorrectionsHit, oldCorrected = r.OldCorrected }).ToList());
 
         // ---- findings.json
         Write(outDir, "findings.json", Findings.Build(indices, scenarios, results, gateEntries, gapsBefore, corrections));

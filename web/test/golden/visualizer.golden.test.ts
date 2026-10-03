@@ -5,10 +5,10 @@ import { loadData, loadGolden } from '../shared/load';
 
 const data = loadData();
 const golden = loadGolden<{ bands: any[] }>('subtests.json');
-const corrections = loadGolden<GoldenCorrection[]>('corrections.json');
+const corrections = loadGolden<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'scaled');
 
 describe('lookup-table visualizer grid', () => {
-  it('equals the raw ranges derived from the golden rows (C1 applied)', () => {
+  it('equals the raw ranges derived from the golden rows (scaled corrections applied)', () => {
     let cells = 0;
     for (const band of golden.bands) {
       const grid = lookupGrid(data, band.id);
@@ -18,10 +18,8 @@ describe('lookup-table visualizer grid', () => {
         for (const row of g.rows as (number | null)[][]) {
           const raw = row[0] as number;
           let s: number | null = row[1] ?? row[2];
-          if (s === null) {
-            const c = corrections.find((x) => x.band === band.id && x.test === testId && x.raw === raw);
-            if (c) s = c.corrected[0] ?? c.corrected[1];
-          }
+          const c = corrections.find((x) => x.band === band.id && x.test === testId && x.raw === raw);
+          if (c) s = c.corrected[0] ?? c.corrected[1];
           if (s === null) continue;
           const cur = derived[s];
           derived[s] = cur ? [cur[0], raw] : [raw, raw];

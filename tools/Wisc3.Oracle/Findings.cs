@@ -103,7 +103,7 @@ public static class Findings
         return new
         {
             gapsBefore = gapsBefore.Select(g => new { g.band, g.test, g.raw }).ToList(),
-            correctionsApplied = corrections.Select(c => new { c.Id, c.Band, c.Test, c.Raw, c.Scaled, c.Source, c.ConfirmedOn }).ToList(),
+            correctionsApplied = corrections.Select(c => new { c.Id, c.Kind, c.Table, cells = c.Cells.Count, c.Source, c.Approval }).ToList(),
             iq999,
             pct0or100,
             inRangeNonKey,

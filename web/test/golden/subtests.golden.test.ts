@@ -6,7 +6,7 @@ import { loadData, loadGolden } from '../shared/load';
 
 const data = loadData();
 const golden = loadGolden<{ bands: any[] }>('subtests.json');
-const corrections = loadGolden<GoldenCorrection[]>('corrections.json');
+const corrections = loadGolden<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'scaled');
 
 const columnsFor = (testId: string, s: number | null) => {
   const cols = data.tests.find((t) => t.id === testId)!.columns;
@@ -14,8 +14,9 @@ const columnsFor = (testId: string, s: number | null) => {
 };
 
 describe('subtests vs golden', () => {
-  it('every row matches (non-gap) or is a listed correction (gap)', () => {
+  it('every row matches the old table, except the corrected cells which match golden corrected', () => {
     let rows = 0;
+    let corrected = 0;
     let gaps = 0;
     for (const band of golden.bands) {
       expect(selectBand(data, band.age)?.id, `band for ${band.id}`).toBe(band.id);
@@ -24,11 +25,12 @@ describe('subtests vs golden', () => {
         for (const row of g.rows as (number | null)[][]) {
           const raw = row[0] as number;
           const got = scaledFor(data, band.id, testId, raw);
-          if (gapSet.has(raw)) {
-            const c = corrections.find((x) => x.band === band.id && x.test === testId && x.raw === raw);
-            expect(c, `gap ${band.id} ${testId} ${raw} must be a listed correction`).toBeDefined();
-            expect(columnsFor(testId, got)).toEqual(c!.corrected);
-            gaps++;
+          const c = corrections.find((x) => x.band === band.id && x.test === testId && x.raw === raw);
+          if (gapSet.has(raw)) expect(c, `gap ${band.id} ${testId} ${raw} must be a listed correction`).toBeDefined();
+          if (c) {
+            expect(columnsFor(testId, got), `${c.id} ${band.id} ${testId} ${raw}`).toEqual(c.corrected);
+            corrected++;
+            if (gapSet.has(raw)) gaps++;
           } else {
             expect(columnsFor(testId, got), `${band.id} ${testId} ${raw}`).toEqual(row.slice(1));
             rows++;
@@ -38,8 +40,10 @@ describe('subtests vs golden', () => {
         expect(scaledFor(data, band.id, testId, g.max + 1)).toBeNull();
       }
     }
-    console.log(`subtests.golden rows=${rows} gapRows=${gaps}`);
-    expect(gaps).toBe(corrections.length);
+    console.log(`subtests.golden rows=${rows} correctedRows=${corrected} gapRows=${gaps}`);
+    expect(corrected).toBe(corrections.length);
+    expect(corrected).toBe(9);
+    expect(gaps).toBe(1);
     expect(rows).toBeGreaterThan(13000);
   });
 });

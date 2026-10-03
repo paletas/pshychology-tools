@@ -8,7 +8,7 @@ namespace Wisc3.Oracle;
 // Writes the data/wisc3-pt files from the same enumerations as `golden`. Formatting is done afterwards by web/scripts/format-data.mjs.
 public static class EmitData
 {
-    public const string DataVersion = "2026.10.03-1";
+    public const string DataVersion = "2026.10.03-2";
 
     static void WriteJson(string path, Action<Utf8JsonWriter> body)
     {
@@ -107,17 +107,9 @@ public static class EmitData
                 var tb = band.Tests[id];
                 var ranges = new SortedDictionary<int, (int lo, int hi)>();
                 int? prevScaled = null;
-                foreach (var oldRow in tb.Rows)
+                foreach (var row in CorrectionsLoader.PatchedRows(band, id))
                 {
-                    var row = oldRow;
-                    if (Catalog.IsGap(row))
-                    {
-                        // Gap rows are filled from the corrections file (columns of equivalentRaw's row get the corrected scaled value).
-                        var c = CorrectionsLoader.Find(band.Id, id, row[0]!.Value);
-                        if (c == null) { Console.Error.WriteLine($"{band.Id}/{id}: raw {row[0]} is unmapped and has no correction"); return 1; }
-                        var eq = tb.Rows.Single(r => r[0] == c.EquivalentRaw);
-                        row = new int?[] { row[0], eq[1] == null ? null : c.Scaled, eq[2] == null ? null : c.Scaled, eq[3] == null ? null : c.Scaled, eq[4] == null ? null : c.Scaled, eq[5] == null ? null : c.Scaled };
-                    }
+                    if (Catalog.IsGap(row)) { Console.Error.WriteLine($"{band.Id}/{id}: raw {row[0]} is unmapped and has no correction"); return 1; }
                     var values = row.Skip(1).Where(v => v != null).Select(v => v!.Value).Distinct().ToList();
                     if (values.Count != 1) { Console.Error.WriteLine($"{band.Id}/{id}: raw {row[0]} has differing scaled values"); return 1; }
                     int scaled = values[0], raw = row[0]!.Value;
@@ -162,7 +154,7 @@ public static class EmitData
                 w.WriteStartObject();
                 foreach (var key in idx.Keys)
                 {
-                    var r = idx.Calculate(key)!;
+                    var r = CorrectionsLoader.PatchIndex(idx.Name, key, idx.Calculate(key), out _)!;
                     w.WritePropertyName(key.ToString(CultureInfo.InvariantCulture));
                     w.WriteStartObject();
                     w.WriteNumber("iq", r.Value);
@@ -174,6 +166,52 @@ public static class EmitData
                 }
                 w.WriteEndObject();
             });
+
+        // The cell diff between the old tables and the emitted data must be exactly the corrections set.
+        var scaledDiff = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var band in bands)
+            foreach (var id in tests)
+            {
+                var tb = band.Tests[id];
+                var patched = CorrectionsLoader.PatchedRows(band, id);
+                for (int i = 0; i < tb.Rows.Count; i++)
+                {
+                    var o = tb.Rows[i];
+                    var p = patched[i];
+                    if (o.SequenceEqual(p)) continue;
+                    var oldText = Catalog.IsGap(o) ? "throws" : o.Skip(1).First(v => v != null)!.Value.ToString(CultureInfo.InvariantCulture);
+                    scaledDiff.Add($"{band.Id}|{id}|{o[0]}|{oldText}|{p.Skip(1).First(v => v != null)!.Value}");
+                }
+            }
+        var scaledExpected = new SortedSet<string>(CorrectionsLoader.Scaled.SelectMany(c => c.Cells.Select(cell =>
+            $"{c.Band}|{c.Test}|{cell.Raw}|{(cell.OldThrows ? "throws" : cell.OldInt.ToString(CultureInfo.InvariantCulture))}|{cell.NewInt}")), StringComparer.Ordinal);
+        var indexDiff = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var idx in Catalog.Indices())
+            foreach (var key in idx.Keys)
+            {
+                var o = idx.Calculate(key)!;
+                var p = CorrectionsLoader.PatchIndex(idx.Name, key, o, out _)!;
+                void Cmp(string field, string a, string b) { if (a != b) indexDiff.Add($"{idx.Name}|{key}|{field}|{a}|{b}"); }
+                var inv = CultureInfo.InvariantCulture;
+                Cmp("iq", o.Value.ToString(inv), p.Value.ToString(inv));
+                Cmp("percentile", o.Percentil.ToString(inv), p.Percentil.ToString(inv));
+                Cmp("ci90Lower", o.ConfidenceInterval90.BottomBoundary.ToString(inv), p.ConfidenceInterval90.BottomBoundary.ToString(inv));
+                Cmp("ci90Upper", o.ConfidenceInterval90.TopBoundary.ToString(inv), p.ConfidenceInterval90.TopBoundary.ToString(inv));
+                Cmp("ci95Lower", o.ConfidenceInterval95.BottomBoundary.ToString(inv), p.ConfidenceInterval95.BottomBoundary.ToString(inv));
+                Cmp("ci95Upper", o.ConfidenceInterval95.TopBoundary.ToString(inv), p.ConfidenceInterval95.TopBoundary.ToString(inv));
+            }
+        var indexExpected = new SortedSet<string>(CorrectionsLoader.IndexCorrections.SelectMany(c => c.Cells.Select(cell =>
+            $"{c.Index}|{cell.Sum}|{c.Field}|{(c.Field == "percentile" ? cell.Old.GetDecimal().ToString(CultureInfo.InvariantCulture) : cell.OldInt.ToString(CultureInfo.InvariantCulture))}|{CorrectionsLoader.CellNewText(c, cell)}")), StringComparer.Ordinal);
+        Console.WriteLine($"emit-data: scaledDiffCells={scaledDiff.Count} indexDiffCells={indexDiff.Count}");
+        if (!scaledDiff.SetEquals(scaledExpected) || !indexDiff.SetEquals(indexExpected))
+        {
+            Console.Error.WriteLine("emit-data: diff differs from the corrections set");
+            foreach (var x in scaledDiff.Except(scaledExpected)) Console.Error.WriteLine("  unexpected scaled change " + x);
+            foreach (var x in scaledExpected.Except(scaledDiff)) Console.Error.WriteLine("  missing scaled change " + x);
+            foreach (var x in indexDiff.Except(indexExpected)) Console.Error.WriteLine("  unexpected index change " + x);
+            foreach (var x in indexExpected.Except(indexDiff)) Console.Error.WriteLine("  missing index change " + x);
+            return 1;
+        }
 
         Console.WriteLine($"emit-data: bands={bands.Count} tests={tests.Count} out={outDir}");
         return 0;
