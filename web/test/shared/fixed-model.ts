@@ -79,8 +79,8 @@ export function fixedModel(
 ): { expected: ExpectedCase; tags: Tag[] } {
   const tags: Tag[] = [];
   if (!strictlySupported(old.age)) {
-    if (old.throws) tags.push('gate-high-throw');
-    else if (old.supported) tags.push('gate-low');
+    if (old.throws && old.throwStage === 'age') tags.push('gate-high-throw');
+    else if (old.supported && !old.throws) tags.push('gate-low');
     return { expected: blocked(old.age), tags };
   }
 

@@ -27,9 +27,17 @@ describe('scenarios vs fixed model', () => {
 
     const tagCounts: Record<string, number> = {};
     const failures: string[] = [];
+    const ageKey = (a: number[]) => a[0] * 10000 + a[1] * 100 + a[2];
+    const highBad: string[] = [];
+    const lowBad: string[] = [];
+    let untaggedAbove17y3m = 0;
     for (const s of scenarios) {
       const { expected, tags } = fixedModel(s, { ...s.old, oldCorrected: s.oldCorrected }, keySets, corrections);
       for (const t of tags) tagCounts[t] = (tagCounts[t] ?? 0) + 1;
+      const k = s.old.age ? ageKey(s.old.age) : null;
+      if (tags.includes('gate-high-throw') && !(k !== null && k >= ageKey([17, 0, 0]) && k <= ageKey([17, 2, 30]))) highBad.push(s.id);
+      if (tags.includes('gate-low') && !(k !== null && k >= ageKey([5, 10, 0]) && k <= ageKey([5, 11, 30]))) lowBad.push(s.id);
+      if (k !== null && k >= ageKey([17, 3, 0]) && tags.length === 0) untaggedAbove17y3m++;
       const actual = scoreCase(data, s);
       const { charts: expCharts, ...expSnap } = expected;
       const actCharts = chartPayloads(actual, pt);
@@ -55,6 +63,10 @@ describe('scenarios vs fixed model', () => {
     }
     console.log(`scenarios.golden count=${scenarios.length} tags=${JSON.stringify(tagCounts)} failures=${failures.length}`);
     expect(failures).toEqual([]);
+    console.log(`gateHighAgeRange=17y0m0d..17y2m30d gateLowAgeRange=5y10m0d..5y11m30d untaggedAbove17y3m=${untaggedAbove17y3m}`);
+    expect(highBad).toEqual([]);
+    expect(lowBad).toEqual([]);
+    expect(untaggedAbove17y3m).toBeGreaterThanOrEqual(1);
     expect(scenarios.length).toBeGreaterThanOrEqual(10000);
     expect(tagCounts['manual-correction'] ?? 0).toBeGreaterThanOrEqual(1);
   });
