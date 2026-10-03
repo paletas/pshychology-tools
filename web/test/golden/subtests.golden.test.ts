@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest';
+import { scaledFor, selectBand } from '../../src/engine/bands';
+import { COLUMNS } from '../../src/engine/types';
+import type { GoldenCorrection } from '../shared/fixed-model';
+import { loadData, loadGolden } from '../shared/load';
+
+const data = loadData();
+const golden = loadGolden<{ bands: any[] }>('subtests.json');
+const corrections = loadGolden<GoldenCorrection[]>('corrections.json');
+
+const columnsFor = (testId: string, s: number | null) => {
+  const cols = data.tests.find((t) => t.id === testId)!.columns;
+  return COLUMNS.map((c) => (cols.includes(c) ? s : null));
+};
+
+describe('subtests vs golden', () => {
+  it('every row matches (non-gap) or is a listed correction (gap)', () => {
+    let rows = 0;
+    let gaps = 0;
+    for (const band of golden.bands) {
+      expect(selectBand(data, band.age)?.id, `band for ${band.id}`).toBe(band.id);
+      for (const [testId, g] of Object.entries<any>(band.tests)) {
+        const gapSet = new Set<number>(g.gaps ?? []);
+        for (const row of g.rows as (number | null)[][]) {
+          const raw = row[0] as number;
+          const got = scaledFor(data, band.id, testId, raw);
+          if (gapSet.has(raw)) {
+            const c = corrections.find((x) => x.band === band.id && x.test === testId && x.raw === raw);
+            expect(c, `gap ${band.id} ${testId} ${raw} must be a listed correction`).toBeDefined();
+            expect(columnsFor(testId, got)).toEqual(c!.corrected);
+            gaps++;
+          } else {
+            expect(columnsFor(testId, got), `${band.id} ${testId} ${raw}`).toEqual(row.slice(1));
+            rows++;
+          }
+        }
+        expect(scaledFor(data, band.id, testId, g.min - 1)).toBeNull();
+        expect(scaledFor(data, band.id, testId, g.max + 1)).toBeNull();
+      }
+    }
+    console.log(`subtests.golden rows=${rows} gapRows=${gaps}`);
+    expect(gaps).toBe(corrections.length);
+    expect(rows).toBeGreaterThan(13000);
+  });
+});
