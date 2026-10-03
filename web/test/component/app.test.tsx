@@ -167,31 +167,31 @@ describe('App', () => {
     expect(sessionStorage.length).toBe(0);
   });
 
-  it('renders the page shell of MainLayout.razor (REV-8)', async () => {
+  it('renders the redesigned page shell (REV-9)', async () => {
     await renderApp();
-    const link = screen.getAllByText('WISC-III').find((e) => e.tagName === 'A' && !e.closest('#main-nav'))!;
+    const link = document.querySelector('header.topbar nav a')!;
+    expect(link.textContent).toBe('WISC-III');
     expect(link.getAttribute('href')).toBe('/wisc3');
     expect(document.querySelector('h1')!.textContent).toBe('WISC-III');
     const footer = document.querySelector('footer')!;
-    expect(footer.textContent).toContain('Idioma:');
-    const options = footer.querySelectorAll('select option');
-    expect(options).toHaveLength(1);
-    expect(options[0].textContent).toBe('Português');
-    expect(document.querySelector('[role=alert]')!.textContent).toContain(pt['Warning']);
+    expect(footer.textContent).toContain(pt['Language'] + ': ' + pt['Language.pt-PT']);
+    expect(document.querySelector('.notice')!.textContent).toContain(pt['Warning']);
     expect(document.querySelectorAll('img[src^="http"]')).toHaveLength(0);
   });
 
-  it('the burger toggles #main-nav between hidden and block', async () => {
+  it('the menu button toggles aria-expanded and the open class of #main-nav', async () => {
     await renderApp();
     const nav = document.getElementById('main-nav')!;
-    expect(nav.className.split(' ')).toContain('hidden');
-    fireEvent.click(document.querySelector('.navbar-burger')!);
-    expect(nav.className.split(' ')).toContain('block');
-    expect(nav.className.split(' ')).not.toContain('hidden');
-    expect(document.getElementById('main-nav-button-open')!.getAttribute('class')).toContain('block');
-    expect(document.getElementById('main-nav-button-closed')!.getAttribute('class')).toContain('hidden');
-    fireEvent.click(document.querySelector('.navbar-burger')!);
-    expect(nav.className.split(' ')).toContain('hidden');
+    const menu = document.querySelector('button.menu')!;
+    expect(menu.getAttribute('aria-controls')).toBe('main-nav');
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(nav.classList.contains('open')).toBe(false);
+    fireEvent.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    expect(nav.classList.contains('open')).toBe(true);
+    fireEvent.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(nav.classList.contains('open')).toBe(false);
   });
 
   it('no warning icon is displayable before input and one appears for an out-of-bounds raw', async () => {

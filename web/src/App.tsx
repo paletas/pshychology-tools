@@ -102,9 +102,9 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
       {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
       {dataPending && <DataUpdatedBanner />}
 
-      <div className="flex-auto w-full bg-yellow-300/75 rounded ring-4 ring-yellow-200 p-1" role="alert">
+      <p className="notice" role="alert">
         <b>{pt['Warning']}</b> {pt['WarningDetails']}
-      </div>
+      </p>
 
       <div className="flex-initial flex flex-col bg-gray-100 rounded-xl shadow-md items-left p-2 space-y-5">
         <DatesPanel
