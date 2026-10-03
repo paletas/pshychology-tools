@@ -1,12 +1,12 @@
 // Seeded case generator for the old-vs-new comparison. Output: tests/e2e/.tmp/cases.json (200 cases).
 // Run from tests/e2e: npx tsx scripts/generate-cases.ts
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { dayNumber, fromDayNumber } from '../../../web/src/engine/age';
 import { selectBand } from '../../../web/src/engine/bands';
 import type { Age, RefData } from '../../../web/src/engine/types';
 import { loadData } from '../../../web/test/shared/load';
-import { e2eDir } from '../specs/helpers/paths';
+import { e2eDir, repoRoot } from '../specs/helpers/paths';
 
 const SEED = 20261003;
 
@@ -76,9 +76,10 @@ const add = (id: string, kind: string, testDate: string, age: Age | null, raw: R
   cases.push({ id, kind, testDate, birthDate: birthDate ?? birthFor(testDate, age!), raw });
 };
 
-// 176 stratified: 8 per band
+// 168 stratified: 8 per band, 7 in these bands (makes room for the 8 forced correction edge cases)
+const SEVEN = new Set(['06y06m', '07y06m', '08y06m', '09y06m', '13y06m', '14y06m', '15y06m', '16y06m']);
 for (const band of data.bands) {
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= (SEVEN.has(band.id) ? 7 : 8); i++) {
     let age: Age;
     do {
       age = [band.from[0], randInt(band.from[1], band.to[1]), randInt(0, 30)];
@@ -87,7 +88,7 @@ for (const band of data.bands) {
   }
 }
 
-// 24 edge cases
+// 32 edge cases (24 + one forced case per D id, below)
 const D0 = '2026-03-15';
 const GATE_BAND = '06y06m';
 const MID_BAND = '10y00m';
@@ -144,6 +145,70 @@ add('edge-manual-correction', 'edge-manual-correction', D0, [11, 8, 15], { ...ra
   raw.Code = found.raw;
   raw.SymbolSearch = null;
   add('edge-index-missing-key', 'edge-index-missing-key', D0, [band.from[0], band.from[1] + 1, 0], raw);
+}
+
+// One forced case per D id, built like the oracle's forced scenarios (Scenarios.cs GenerateForcedPerId: first date, first target sum).
+{
+  const FORCED_DATE = '2023-05-10';
+  const FORCED_SUMS: Record<string, number> = { D4: 82, D5: 84, D6: 63, D7: 25, D8: 40 };
+  const corr: { id: string; kind: string; band?: string; test?: string; index?: string; cells: { raw?: number }[] }[] = JSON.parse(
+    readFileSync(join(repoRoot, 'data/corrections/wisc3-pt.json'), 'utf8'),
+  ).corrections;
+  const midpoints = (bandId: string) => {
+    const raw: Record<string, number | null> = {};
+    for (const t of data.tests) raw[t.id] = Math.floor((data.subtests[bandId][t.id].min + data.subtests[bandId][t.id].max) / 2);
+    return raw;
+  };
+  const contributing = (index: string) =>
+    data.tests.filter((t) => t.columns.includes(index as never) && (!(index === 'verbal' || index === 'realization') || t.mandatory));
+  // depth-first search: one raw per contributing test (lowest raw of each scaled value, ascending scaled) summing to the target
+  const solve = (bandId: string, index: string, target: number): Record<string, number> | null => {
+    const tests = contributing(index);
+    const maps = tests.map((t) =>
+      Object.entries(data.subtests[bandId][t.id].scaled)
+        .map(([s, r]) => [Number(s), r[0]] as [number, number])
+        .sort((a, b) => a[0] - b[0]),
+    );
+    const chosen: number[] = [];
+    const dfs = (i: number, remaining: number): boolean => {
+      if (i === tests.length) return remaining === 0;
+      for (const [scaled, raw] of maps[i]) {
+        chosen[i] = raw;
+        if (dfs(i + 1, remaining - scaled)) return true;
+      }
+      return false;
+    };
+    if (!dfs(0, target)) return null;
+    return Object.fromEntries(tests.map((t, i) => [t.id, chosen[i]]));
+  };
+  const addForced = (id: string, bandId: string, raw: Record<string, number | null>) => {
+    const band = data.bands.find((b) => b.id === bandId)!;
+    add(`edge-corr-${id}`, `edge-corr-${id}`, FORCED_DATE, band.from, raw);
+  };
+  for (const c of corr) {
+    if (!/^D[1-8]$/.test(c.id)) continue;
+    if (c.kind === 'scaled') {
+      const raw = midpoints(c.band!);
+      raw[c.test!] = c.cells[0].raw!;
+      addForced(c.id, c.band!, raw);
+    } else {
+      const target = FORCED_SUMS[c.id];
+      const order = [...data.bands].sort((a, b) => Number(b.id === '10y00m') - Number(a.id === '10y00m')).map((b) => b.id);
+      const used = order.find((b) => solve(b, c.index!, target) !== null);
+      if (!used) throw new Error(`${c.id}: no band reaches ${c.index} sum ${target}`);
+      const raw = midpoints(used);
+      for (const [t, r] of Object.entries(solve(used, c.index!, target)!)) raw[t] = r;
+      // self-check on data/: the contributing scaled values really sum to the target
+      let sum = 0;
+      for (const t of contributing(c.index!)) {
+        const e = Object.entries(data.subtests[used][t.id].scaled).find(([, r]) => raw[t.id]! >= r[0] && raw[t.id]! <= r[1])!;
+        sum += Number(e[0]);
+      }
+      if (sum !== target) throw new Error(`${c.id}: forced sum ${sum} != ${target}`);
+      console.log(`forced ${c.id} ${c.index} sum=${target} band=${used}`);
+      addForced(c.id, used, raw);
+    }
+  }
 }
 
 const stratified = cases.filter((c) => c.kind === 'stratified').length;

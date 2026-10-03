@@ -1,15 +1,17 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { blockAds } from '../helpers/adblock';
 import { debugState, expectCase, fillCase, waitControlled, waitReady } from '../helpers/app';
 import { midCase, refData } from '../helpers/cases';
-import { tmpData } from '../helpers/paths';
+import { dataDir, tmpData } from '../helpers/paths';
 import { resetTmp } from '../helpers/tmp';
 
-const NEW_VERSION = '2026.10.03-2';
+// current dataVersion (the .tmp/data copy made by prepare-tmp, else data/) plus a suffix
+const versionFile = existsSync(join(tmpData, 'version.json')) ? join(tmpData, 'version.json') : join(dataDir, 'version.json');
+const NEW_VERSION = `${JSON.parse(readFileSync(versionFile, 'utf8')).dataVersion}-update-test`;
 
 function bumpDataVersion(version: string): void {
   const file = join(tmpData, 'version.json');

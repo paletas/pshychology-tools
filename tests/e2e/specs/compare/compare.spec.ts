@@ -100,6 +100,7 @@ for (const c of cases) {
       const input: CaseInput = { testDate: c.testDate, birthDate: c.birthDate, raw: c.raw };
       const model = fixedModel(input, { ...pred.old, correctionsHit: pred.correctionsHit, oldCorrected: pred.oldCorrected }, keySets, corrections);
       tags = model.tags;
+      record.correctionIds = model.correctionIds;
       const expOld = expectedOld(pred.old);
       const expNew = expectedNew(model.expected);
       record.age = pred.old.age as Age | null;
@@ -129,7 +130,7 @@ for (const c of cases) {
       const oldVsPred: FieldDiff[] = diff(oldRead, expOld);
       const newVsFixed: FieldDiff[] = diff(newRead, expNew);
       const oldVsNew: FieldDiff[] = diff(oldRead, newRead);
-      const notCovered = uncovered(oldVsNew, tags, expNew);
+      const notCovered = uncovered(oldVsNew, tags, expNew, model.correctionIds, corrections);
       const blankOld = oldIndicesShown && oldInk.some((v) => v < MIN_INK);
       const blankNew = newIndicesShown && newInk.some((v) => v < MIN_INK);
 

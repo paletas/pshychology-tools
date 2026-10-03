@@ -9,7 +9,8 @@
     "test:behaviour": "playwright test -c playwright.behaviour.config.ts",
     "test:compare": "node scripts/run-compare.mjs",
     "test:timing": "playwright test -c playwright.compare.config.ts --project=timing",
-    "report:flagged": "tsx scripts/flagged-issues.ts"
+    "report:flagged": "tsx scripts/flagged-issues.ts",
+    "report:corrections": "tsx scripts/corrections-report.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

@@ -1,6 +1,6 @@
 // Generates docs/wisc3/flagged-issues.md (English, for the psychologist) from the oracle golden files and web/src/i18n/pt.ts.
-// Optional hand-maintained input: data/corrections/manual-discrepancies.json (array, or {"discrepancies":[...]}) with entries
-// {id, band, test, raw, appScaled, manualScaled, source, status}. The file may be absent or empty.
+// Inputs: data/corrections/wisc3-pt.json (schema v2, the applied corrections) and data/corrections/manual-discrepancies.json
+// (array of {id, table, where, what, source, status, ...}); entries with status other than "resolved" are listed as open.
 // Run from tests/e2e: npm run report:flagged
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -14,7 +14,7 @@ const golden = join(repoRoot, 'tools/Wisc3.Oracle/golden');
 const readJson = (p: string): any => JSON.parse(readFileSync(p, 'utf8'));
 const findings = readJson(join(golden, 'findings.json'));
 const indices: Record<string, { sum: number; inTable: boolean; iq: number; percentile: string; ci90: number[]; ci95: number[] }[]> = readJson(join(golden, 'indices.json'));
-const corrections: any[] = readJson(join(golden, 'corrections.json'));
+const corrections: any[] = readJson(join(repoRoot, 'data/corrections/wisc3-pt.json')).corrections;
 readJson(join(golden, 'age-gate.json')); // presence check; the leak counts come from findings.gateLeak
 
 const LABEL: Record<IndexName, string> = {
@@ -27,7 +27,12 @@ const LABEL: Record<IndexName, string> = {
 };
 
 const KEPT = 'Kept as-is, needs confirmation.';
+const DISPLAY_NOTE = "The printed manual shows '> 160' / '< 0.1' / '> 99.9' for these rows; display kept as the old app (user decision 2026-10-03).";
 const ageText = (a: number[]) => `${a[0]}y ${a[1]}m ${a[2]}d`;
+const bandLabel = (band: string) => {
+  const m = /^(\d+)y(\d+)m$/.exec(band);
+  return m ? `${Number(m[1])}${m[2] === '06' ? ' 1/2' : ''} anos` : band;
+};
 const pct = (n: number, total: number) => `${((n / total) * 100).toFixed(1)}%`;
 
 /** 5,6,7,9 -> "5-7, 9" */
@@ -52,7 +57,7 @@ md.push(
 
 // 1
 md.push('## 1. IQ 999 for Complete Scale sums 182-190', '');
-md.push(`${KEPT} The old tables return IQ 999 for these sums; the percentile and confidence intervals are shown exactly as the old app shows them.`, '');
+md.push(`${KEPT} The old tables return IQ 999 for these sums; the percentile and confidence intervals are shown exactly as the old app shows them. ${DISPLAY_NOTE}`, '');
 md.push('| Complete Scale sum | IQ | Percentile | CI 90% | CI 95% |', '|---|---|---|---|---|');
 for (const r of indices.completeScale.filter((x) => findings.iq999.completeScale.includes(x.sum)))
   md.push(`| ${r.sum} | ${r.iq} | ${r.percentile} | ${r.ci90.join(' - ')} | ${r.ci95.join(' - ')} |`);
@@ -61,7 +66,7 @@ md.push('', other999.length ? `Other indices with IQ 999: ${other999.join(', ')}
 
 // 2
 md.push('## 2. Percentile 0 and 100 rows', '');
-md.push(`${KEPT} These rows exist in the old tables as 0 and 100; please confirm that they are real manual values and not table placeholders.`, '');
+md.push(`${KEPT} These rows exist in the old tables as 0 and 100; please confirm that they are real manual values and not table placeholders. ${DISPLAY_NOTE}`, '');
 md.push('| Index | Sums with percentile 0 | Sums with percentile 100 |', '|---|---|---|');
 for (const n of INDEX_NAMES) {
   const rows: { sum: number; percentile: string }[] = findings.pct0or100[n];
@@ -143,36 +148,34 @@ if (existsSync(discPath)) {
   }
 }
 const openDisc = disc.filter((d) => String(d.status ?? 'open').toLowerCase() !== 'resolved');
-md.push('## Discrepancies vs printed manual (open, NOT changed)', '');
+md.push('## Discrepancies vs printed manual (open)', '');
 if (openDisc.length === 0) {
-  md.push('None recorded.', '');
+  md.push('none', '');
 } else {
-  md.push('Found while checking the norm tables against the printed manual (Table 36, Portuguese WISC-III). The app tables are NOT changed; each item needs the psychologist to confirm which value is right.', '');
-  md.push('| Id | Band | Test | Raw | App scaled | Manual scaled | Source | Status |', '|---|---|---|---|---|---|---|---|');
+  md.push('Found while checking the norm tables against the printed manual (Portuguese WISC-III). Each item needs the psychologist to confirm which value is right.', '');
+  md.push('| Id | Where | What | Source | Status |', '|---|---|---|---|---|');
   const cellText = (v: unknown) => String(v ?? '').replace(/\|/g, '/');
   for (const d of openDisc)
-    md.push(`| ${cellText(d.id)} | ${cellText(d.band)} | ${cellText(d.test)} | ${cellText(d.raw)} | ${cellText(d.appScaled)} | ${cellText(d.manualScaled)} | ${cellText(d.source)} | ${cellText(d.status ?? 'open')} |`);
+    md.push(`| ${cellText(d.id)} | ${cellText(d.where)} | ${cellText(d.what)} | ${cellText(d.source)} | ${cellText(d.status ?? 'open')} |`);
   md.push('');
 }
 
 // resolved
 md.push('## Resolved', '');
-const bandLabel = (band: string) => {
-  const m = /^(\d+)y(\d+)m$/.exec(band);
-  return m ? `${Number(m[1])}${m[2] === '06' ? ' 1/2' : ''} anos` : band;
+md.push('Corrected in the new app only (data/corrections/wisc3-pt.json, applied to the emitted data); the old app is unchanged. The full cell list is in docs/wisc3/corrections-report.md.', '');
+const cellsText = (c: any): string => {
+  const key = c.kind === 'scaled' ? 'raw' : 'sum';
+  const one = (x: any) => `${key} ${x[key]}: ${x.old} -> ${x.new}`;
+  const cs: any[] = c.cells;
+  return cs.length <= 6 ? cs.map(one).join('; ') : `${cs.length} cells (${key}s ${cs[0][key]}-${cs[cs.length - 1][key]}), e.g. ${one(cs[0])}; ${one(cs[cs.length - 1])}`;
 };
 for (const c of corrections) {
-  const scaled = c.corrected.find((v: number | null) => v !== null);
-  const range: number[] | undefined = readJson(join(repoRoot, `data/wisc3-pt/subtests/${c.band}.json`))[c.test]?.scaled?.[String(scaled)];
-  md.push(
-    `- ${c.id}: ${c.band} (${bandLabel(c.band)}), ${pt[`Test.${c.test}`] ?? c.test}, raw ${c.raw}: old table had no mapping (app error); now scaled ${scaled}${range ? ` (raw ${range[0]}-${range[1]})` : ''}. Source: ${c.source}; user-confirmed ${c.confirmedOn}.`,
-  );
+  const what = c.kind === 'scaled' ? `${c.band} (${bandLabel(c.band)}), ${pt[`Test.${c.test}`] ?? c.test}` : `${LABEL[c.index as IndexName] ?? c.index}, ${c.field}`;
+  md.push(`- ${c.id}: Table ${c.table}, ${what}; ${cellsText(c)}. Source: ${c.source}; ${c.approval}.`);
 }
-for (const d of disc.filter((x) => String(x.status ?? '').toLowerCase() === 'resolved'))
-  md.push(`- ${d.id}: ${d.band}, ${d.test}, raw ${d.raw}: app scaled ${d.appScaled}, manual ${d.manualScaled}. Source: ${d.source}.`);
 md.push('');
 
 const out = join(repoRoot, 'docs/wisc3/flagged-issues.md');
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, md.join('\n'));
-console.log(`flagged-issues: wrote ${out} (open discrepancies: ${openDisc.length})`);
+console.log(`flagged-issues: wrote ${out} (open discrepancies: ${openDisc.length}, resolved: ${corrections.length})`);
