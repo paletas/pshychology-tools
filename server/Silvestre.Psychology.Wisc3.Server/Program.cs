@@ -13,11 +13,11 @@ var app = builder.Build();
 const string NoCache = "no-cache";
 const string Immutable = "public, max-age=31536000, immutable";
 
-app.MapGet("/healthz", () => Results.Text("ok"));
+app.MapMethods("/healthz", new[] { HttpMethods.Get, HttpMethods.Head }, () => Results.Text("ok"));
 
-app.MapGet("/", () => Results.Redirect("/wisc3"));
+app.MapMethods("/", new[] { HttpMethods.Get, HttpMethods.Head }, () => Results.Redirect("/wisc3"));
 
-app.MapGet("/wisc3", (HttpContext ctx) =>
+app.MapMethods("/wisc3", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext ctx) =>
 {
     var index = Path.Combine(spaRoot, "index.html");
     if (!File.Exists(index)) return Results.NotFound();
@@ -25,7 +25,7 @@ app.MapGet("/wisc3", (HttpContext ctx) =>
     return Results.File(index, "text/html; charset=utf-8");
 });
 
-app.MapGet("/api/reference/manifest", (HttpContext ctx, ReferenceDataStore store) =>
+app.MapMethods("/api/reference/manifest", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext ctx, ReferenceDataStore store) =>
 {
     var bundle = store.Current;
     var etag = $"\"{bundle.Sha256}\"";
@@ -34,6 +34,12 @@ app.MapGet("/api/reference/manifest", (HttpContext ctx, ReferenceDataStore store
     if (ctx.Request.Headers.IfNoneMatch.ToString().Split(',').Select(v => v.Trim()).Contains(etag))
     {
         return Results.StatusCode(StatusCodes.Status304NotModified);
+    }
+    if (HttpMethods.IsHead(ctx.Request.Method))
+    {
+        // headers only; skip serialising a body that would be dropped
+        ctx.Response.ContentType = "application/json; charset=utf-8";
+        return Results.Empty;
     }
     return Results.Json(new
     {
@@ -45,7 +51,7 @@ app.MapGet("/api/reference/manifest", (HttpContext ctx, ReferenceDataStore store
     });
 });
 
-app.MapGet("/api/reference/bundle/{sha}.json", (HttpContext ctx, ReferenceDataStore store, string sha) =>
+app.MapMethods("/api/reference/bundle/{sha}.json", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext ctx, ReferenceDataStore store, string sha) =>
 {
     var bundle = store.Current;
     if (!string.Equals(sha, bundle.Sha256, StringComparison.Ordinal)) return Results.NotFound();

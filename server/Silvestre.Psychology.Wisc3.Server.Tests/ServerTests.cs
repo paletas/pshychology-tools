@@ -120,6 +120,54 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/_framework/x.js")).StatusCode);
     }
 
+    private static Task<HttpResponseMessage> HeadAsync(HttpClient client, string url) =>
+        client.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
+
+    [Fact]
+    public async Task Head_SpaShell_Wisc3()
+    {
+        var resp = await HeadAsync(_fx.CreateClient(), "/wisc3");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("no-cache", resp.Headers.CacheControl?.ToString());
+        Assert.StartsWith("text/html", resp.Content.Headers.ContentType?.MediaType);
+        Assert.Empty(await resp.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task Head_ServiceWorker()
+    {
+        var resp = await HeadAsync(_fx.CreateClient(), "/service-worker.js");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("no-cache", resp.Headers.CacheControl?.ToString());
+        Assert.Empty(await resp.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task Head_Manifest()
+    {
+        var client = _fx.CreateClient();
+        var get = await client.GetAsync("/api/reference/manifest");
+        var resp = await HeadAsync(client, "/api/reference/manifest");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("no-cache", resp.Headers.CacheControl?.ToString());
+        Assert.NotNull(resp.Headers.ETag);
+        Assert.Equal(get.Headers.ETag?.Tag, resp.Headers.ETag?.Tag);
+        Assert.Empty(await resp.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task Head_Bundle()
+    {
+        var client = _fx.CreateClient();
+        var m = await ManifestAsync(client);
+        var resp = await HeadAsync(client, $"/api/reference/bundle/{m.GetProperty("sha256").GetString()}.json");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Contains("immutable", resp.Headers.CacheControl!.ToString());
+        Assert.NotNull(resp.Headers.ETag);
+        Assert.Equal(m.GetProperty("bytes").GetInt64(), resp.Content.Headers.ContentLength);
+        Assert.Empty(await resp.Content.ReadAsByteArrayAsync());
+    }
+
     [Fact]
     public async Task Post_on_api_is_405()
     {
