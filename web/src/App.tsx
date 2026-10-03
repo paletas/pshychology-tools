@@ -7,7 +7,8 @@ import { pt } from './i18n/pt';
 import { ptNew } from './i18n/pt-new';
 import { initReferenceData, takePending } from './refdata/client';
 import type { Loaded } from './refdata/client';
-import { FactorialChart, QiChart, StandardResultsChart } from './ui/Charts';
+import { ChartsSection } from './charts/ChartsSection';
+import { chartsDerived } from './charts/derived';
 import { DataUnavailableBanner, DataUpdatedBanner, UpdateBanner } from './ui/Banners';
 import { DatesPanel } from './ui/DatesPanel';
 import { GlanceStrip, IndexTable } from './ui/IndexTable';
@@ -58,10 +59,12 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   const data = loaded?.data ?? null;
   const snapshot = useMemo(() => (data ? scoreCase(data, { testDate, birthDate, raw }) : null), [data, testDate, birthDate, raw]);
   const charts = useMemo(() => (snapshot ? chartPayloads(snapshot, pt) : null), [snapshot]);
+  const derived = useMemo(() => chartsDerived(charts), [charts]);
+  const optional = useMemo(() => Object.fromEntries((data?.tests ?? []).map((t) => [t.id, !t.mandatory])), [data]);
 
   useEffect(() => {
-    publishDebug({ snapshot, charts, dataVersion: data?.dataVersion ?? null, dataSha: loaded?.sha ?? null });
-  }, [snapshot, charts, data, loaded]);
+    publishDebug({ snapshot, charts, chartsDerived: derived, dataVersion: data?.dataVersion ?? null, dataSha: loaded?.sha ?? null });
+  }, [snapshot, charts, derived, data, loaded]);
 
   const setDates = (t: string, b: string) => {
     if (data) {
@@ -140,14 +143,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
           </section>
         </div>
 
-        {/* Chart.js canvases until the SVG charts replace them (batch 11). */}
-        <section className="charts">
-          <div className="fig-grid">
-            <div className="fig wide"><QiChart payload={charts} /></div>
-            <div className="fig"><StandardResultsChart payload={charts} /></div>
-            <div className="fig"><FactorialChart payload={charts} /></div>
-          </div>
-        </section>
+        <ChartsSection payload={charts} derived={derived} ci={ci} optional={optional} />
       </div>
     </Layout>
   );
