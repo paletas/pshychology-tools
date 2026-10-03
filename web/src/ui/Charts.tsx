@@ -119,6 +119,8 @@ export function qiConfig(p: ChartPayloads['qi']): any {
     data,
     datalabels: { anchor: 'end', align: 'top' },
   });
+  const mins = [...p.QI, ...p.Indices].map((e) => e.min).filter((v): v is number => v !== null);
+  const yMin = mins.length ? Math.floor(Math.min(...mins) / 5) * 5 : null;
   return {
     type: 'boxplot',
     data: {
@@ -133,8 +135,12 @@ export function qiConfig(p: ChartPayloads['qi']): any {
       responsive: true,
       scales: {
         x: { ticks: { display: false } },
+        // as wisc3.js:313-321 (suggestedMax 195, stepSize 5, ticks only at multiples of 10, no explicit min). Chart.js 2 then
+        // derives min = floor(dataMin / 5) * 5, so it is set explicitly here (Chart.js 4 could include 0 with null slots).
         y: {
+          beginAtZero: false,
           suggestedMax: 195,
+          ...(yMin === null ? {} : { min: yMin }),
           ticks: {
             stepSize: 5,
             callback: (value: number | string, index: number, values: unknown[]) =>

@@ -73,7 +73,7 @@ export function IndexTable({ snapshot, ci, onCi }: Props) {
               <td className="bg-gray-200" {...titleProps}>
                 <span data-testid={`index-iq-${name}`}>{unavailable ? '—' : ok ? ok.iq : ''}</span>
                 {band && (
-                  <svg className="w-8 h-8 float-right" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-testid={`index-class-${name}`}>
+                  <svg className="w-8 h-8 float-right" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-testid={`index-class-${name}`}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ARROWS[band]} />
                     <title>{pt[`QI.AverageComparison.${band}`]}</title>
                   </svg>

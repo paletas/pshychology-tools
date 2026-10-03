@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { repoRoot } from '../shared/load';
+import { scan } from '../../../tests/e2e/scripts/ui-class-audit';
 
 const srcDir = resolve(repoRoot, 'web/src');
 
@@ -42,5 +43,15 @@ describe('static guards on web/src', () => {
 
   it('main.tsx uses no console.error', () => {
     expect(read('main.tsx')).not.toMatch(/console\.error/);
+  });
+});
+
+describe('REV-8 UI guards', () => {
+  it('has no http(s):// literal in web/src (the only external reference is the AdSense tag in index.html)', () => {
+    for (const f of files) expect(f.text, f.path).not.toMatch(/https?:\/\//);
+  });
+
+  it('no className combines a display utility with an unprefixed hidden (static scan: hits=0)', () => {
+    expect(scan(srcDir)).toEqual([]);
   });
 });

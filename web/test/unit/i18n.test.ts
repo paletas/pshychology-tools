@@ -6,13 +6,18 @@ import { pt } from '../../src/i18n/pt';
 import { repoRoot } from '../shared/load';
 
 const base = resolve(repoRoot, 'src/Silvestre.Psychology.Tools.WISC3.WebComponent');
-const files = ['Pages/WISC3.pt.resx', 'Components/WISC3LookupTableVisualizer.pt.resx'];
+const webApp = resolve(repoRoot, 'src/Silvestre.Psychology.Tools.WebApp');
+const files = [
+  { dir: base, f: 'Pages/WISC3.pt.resx', min: 10 },
+  { dir: base, f: 'Components/WISC3LookupTableVisualizer.pt.resx', min: 10 },
+  { dir: webApp, f: 'Components/Shared/CultureSelector.pt.resx', min: 2 },
+];
 const parser = new XMLParser({ ignoreAttributes: false, parseTagValue: false, trimValues: false });
 
 describe('pt strings', () => {
-  for (const f of files) {
+  for (const { dir, f, min } of files) {
     it(`every key/value of ${f} is present verbatim`, () => {
-      const x = parser.parse(readFileSync(resolve(base, f), 'utf8'));
+      const x = parser.parse(readFileSync(resolve(dir, f), 'utf8'));
       const list = Array.isArray(x.root.data) ? x.root.data : [x.root.data];
       let n = 0;
       for (const e of list) {
@@ -21,7 +26,7 @@ describe('pt strings', () => {
         expect(pt[e['@_name']], e['@_name']).toBe(v);
         n++;
       }
-      expect(n).toBeGreaterThan(10);
+      expect(n).toBeGreaterThanOrEqual(min);
     });
   }
 

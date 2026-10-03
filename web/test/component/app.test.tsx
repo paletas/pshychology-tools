@@ -5,6 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { App } from '../../src/App';
 import { installDebug } from '../../src/debug';
 import { scoreCase } from '../../src/engine/scoring';
+import { pt } from '../../src/i18n/pt';
 import type { RefData } from '../../src/engine/types';
 import { parseBundle } from '../../src/refdata/schema';
 import { birthFor } from '../shared/load';
@@ -164,5 +165,46 @@ describe('App', () => {
     expect(Storage.prototype.setItem).not.toHaveBeenCalled();
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
+  });
+
+  it('renders the page shell of MainLayout.razor (REV-8)', async () => {
+    await renderApp();
+    const link = screen.getAllByText('WISC-III').find((e) => e.tagName === 'A' && !e.closest('#main-nav'))!;
+    expect(link.getAttribute('href')).toBe('/wisc3');
+    expect(document.querySelector('h1')!.textContent).toBe('WISC-III');
+    const footer = document.querySelector('footer')!;
+    expect(footer.textContent).toContain('Idioma:');
+    const options = footer.querySelectorAll('select option');
+    expect(options).toHaveLength(1);
+    expect(options[0].textContent).toBe('Português');
+    expect(document.querySelector('[role=alert]')!.textContent).toContain(pt['Warning']);
+    expect(document.querySelectorAll('img[src^="http"]')).toHaveLength(0);
+  });
+
+  it('the burger toggles #main-nav between hidden and block', async () => {
+    await renderApp();
+    const nav = document.getElementById('main-nav')!;
+    expect(nav.className.split(' ')).toContain('hidden');
+    fireEvent.click(document.querySelector('.navbar-burger')!);
+    expect(nav.className.split(' ')).toContain('block');
+    expect(nav.className.split(' ')).not.toContain('hidden');
+    expect(document.getElementById('main-nav-button-open')!.getAttribute('class')).toContain('block');
+    expect(document.getElementById('main-nav-button-closed')!.getAttribute('class')).toContain('hidden');
+    fireEvent.click(document.querySelector('.navbar-burger')!);
+    expect(nav.className.split(' ')).toContain('hidden');
+  });
+
+  it('no warning icon is displayable before input and one appears for an out-of-bounds raw', async () => {
+    await renderApp();
+    const icons = () => Array.from(document.querySelectorAll('[data-testid^="subtest-row-"] svg'));
+    for (const i of icons()) expect(i.getAttribute('class')!.split(' ')).toContain('hidden');
+    const age: [number, number, number] = [9, 3, 12];
+    setAge(age);
+    const t = window.__wisc3Debug.snapshot().snapshot!.tests.Information;
+    setRaw('Information', String(t.max! + 1));
+    const cls = (id: string) => document.querySelector(`[data-testid="subtest-row-${id}"] svg`)!.getAttribute('class')!.split(' ');
+    expect(cls('Information')).toContain('inline');
+    expect(cls('Information')).not.toContain('hidden');
+    expect(cls('Code')).toContain('hidden');
   });
 });

@@ -27,6 +27,9 @@ describe('QI chart payload', () => {
     expect(payload.qi.Indices[2].median).toBeNull();
     const cfg = qiConfig(payload.qi);
     expect(cfg.data.labels).toHaveLength(6);
+    const mins = [...payload.qi.QI, ...payload.qi.Indices].map((e) => e.min).filter((v): v is number => v !== null);
+    expect(cfg.options.scales.y.min).toBe(Math.floor(Math.min(...mins) / 5) * 5);
+    expect(cfg.options.scales.y.beginAtZero).toBe(false);
     for (const ds of cfg.data.datasets) expect(ds.data).toHaveLength(6);
     expect(cfg.data.datasets[1].data[5]).toBeNull();
     expect(cfg.data.datasets[1].data[3]).not.toBeNull();

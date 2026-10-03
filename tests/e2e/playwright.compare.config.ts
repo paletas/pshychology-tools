@@ -45,6 +45,8 @@ export default defineConfig({
   ],
   projects: [
     { name: 'compare', testMatch: 'specs/compare/*.spec.ts', use: common },
+    { name: 'parity-1280', testMatch: 'specs/parity/initial-state.spec.ts', use: { ...common, viewport: { width: 1280, height: 900 } } },
+    { name: 'parity-768', testMatch: 'specs/parity/initial-state.spec.ts', use: { ...common, viewport: { width: 768, height: 1024 } } },
     { name: 'timing', testMatch: 'specs/timing/*.spec.ts', use: common },
   ],
 });

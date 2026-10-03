@@ -11,6 +11,7 @@ import { DataUnavailableBanner, DataUpdatedBanner, UpdateBanner } from './ui/Ban
 import { DatesPanel } from './ui/DatesPanel';
 import { IndexTable } from './ui/IndexTable';
 import type { CiChoice } from './ui/IndexTable';
+import { Layout } from './ui/Layout';
 import { LookupTableVisualizer } from './ui/LookupTableVisualizer';
 import { SubtestTable } from './ui/SubtestTable';
 
@@ -85,15 +86,18 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
 
   if (!ready || !data || !snapshot) {
     return (
-      <div className="flex flex-col space-y-4 mt-2" data-testid="app" data-ready="false">
-        {ready && loadFailed && <DataUnavailableBanner />}
-      </div>
+      <Layout>
+        <div className="flex flex-col space-y-4 mt-2" data-testid="app" data-ready="false">
+          {ready && loadFailed && <DataUnavailableBanner />}
+        </div>
+      </Layout>
     );
   }
 
   const datesSet = testDate !== '' && birthDate !== '';
 
   return (
+    <Layout dataVersion={data.dataVersion}>
     <div className="flex flex-col space-y-4 mt-2 px-2" data-testid="app" data-ready="true">
       {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
       {dataPending && <DataUpdatedBanner />}
@@ -146,8 +150,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
           <FactorialChart payload={charts} />
         </div>
       </div>
-
-      <footer className="text-xs text-gray-600 print:hidden" data-testid="data-version">Dados: {data.dataVersion}</footer>
     </div>
+    </Layout>
   );
 }

@@ -30,13 +30,13 @@ export function DatesPanel({ testDate, birthDate, age, onTestDate, onBirthDate, 
 
         <div className="flex flex-row space-x-4 mx-auto justify-end">
           <button className="bg-gray-300 rounded-xl p-2 disabled:opacity-50" onClick={onShowTable} data-testid="show-table">
-            <svg className="block stroke-current stroke-2 w-6 h-6 mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <svg className="block stroke-current stroke-2 w-6 h-6 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
             {pt['Button.ShowLookupTable']}
           </button>
           <button className="bg-gray-300 rounded-xl p-2 disabled:opacity-50" onClick={onStartFresh} data-testid="start-fresh">
-            <svg className="block stroke-current stroke-2 w-6 h-6 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="block stroke-current stroke-2 w-6 h-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             {pt['Button.StartNew']}

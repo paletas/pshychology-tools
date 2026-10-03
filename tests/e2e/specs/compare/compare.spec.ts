@@ -117,6 +117,14 @@ for (const c of cases) {
       const oldIndicesShown = pred.old.indicesShown && !pred.old.throws;
       let oldInk: number[] = [0, 0, 0];
       if (oldIndicesShown) oldInk = await Promise.all(OLD_CHART_INSTANCES.map((i) => pollInk(() => oldCanvasInkRatio(oldPage, i))));
+      // [REV-8] QI y-axis range of the review cases (old: Chart.js 2 instance, new: Chart.js 4 chart)
+      let oldAxis: { min: number; max: number } | null = null;
+      if (REVIEW_IDS.has(c.id) && oldIndicesShown) {
+        oldAxis = await oldPage.evaluate(() => {
+          const y = (window as any).wisc3.__qiResultsChartInstance?.scales?.['y-axis-0'];
+          return y ? { min: y.min as number, max: y.max as number } : null;
+        });
+      }
       if (REVIEW_IDS.has(c.id)) await oldPage.screenshot({ path: join(chartsDir, `${c.id}-old.png`), fullPage: true });
       const oldConsole = evaluateOldConsole(oldLog.records, oldCtx);
       const oldErrors = oldLog.records.map((r) => r.text);
@@ -127,6 +135,8 @@ for (const c of cases) {
       const newIndicesShown = model.expected.indicesShown;
       let newInk: number[] = [0, 0, 0];
       if (newIndicesShown) newInk = await Promise.all(NEW_CHARTS.map((ch) => pollInk(() => canvasInkRatio(newPage.getByTestId(ch)))));
+      let newAxis: { min: number; max: number } | null = null;
+      if (REVIEW_IDS.has(c.id) && newIndicesShown) newAxis = await newPage.evaluate(() => (window as any).__wisc3Debug.chartAxis('chart-qi'));
       if (REVIEW_IDS.has(c.id)) await newPage.screenshot({ path: join(chartsDir, `${c.id}-new.png`), fullPage: true });
       const newErrors = [...newLog.errors];
 
@@ -136,6 +146,11 @@ for (const c of cases) {
       const notCovered = uncovered(oldVsNew, tags, expNew, model.correctionIds, corrections);
       const blankOld = oldIndicesShown && oldInk.some((v) => v < MIN_INK);
       const blankNew = newIndicesShown && newInk.some((v) => v < MIN_INK);
+
+      // max is recorded only: tick generation differs between Chart.js 2 and 4
+      const qiAxisBad = REVIEW_IDS.has(c.id) && oldIndicesShown && newIndicesShown && (oldAxis === null || newAxis === null || oldAxis.min !== newAxis.min);
+      if (REVIEW_IDS.has(c.id)) record.qiAxis = { old: oldAxis, new: newAxis };
+      if (qiAxisBad) record.regressionField = 'qiAxis.min';
 
       Object.assign(record, {
         chartInk: { old: oldInk, new: newInk },
@@ -156,7 +171,7 @@ for (const c of cases) {
       const oldMissing = oldConsole.predicted.some((k) => !oldConsole.observed.includes(k));
       if (oldRegression) verdict = 'regression';
       else if (oldVsPred.length > 0 || blankOld || oldMissing) verdict = 'old-model-mismatch';
-      else if (newVsFixed.length > 0 || notCovered.length > 0 || blankNew || newErrors.length > 0) verdict = 'regression';
+      else if (newVsFixed.length > 0 || notCovered.length > 0 || blankNew || newErrors.length > 0 || qiAxisBad) verdict = 'regression';
       else verdict = tags.length > 0 && oldVsNew.length > 0 ? 'expected-diff' : 'pass';
     } catch (e) {
       record.error = String((e as Error).stack ?? e);

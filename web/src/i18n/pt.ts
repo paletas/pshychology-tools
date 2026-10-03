@@ -1,6 +1,8 @@
 // Portuguese strings, verbatim from WISC3.pt.resx and WISC3LookupTableVisualizer.pt.resx,
 // plus the literal visible texts of WISC3.razor / WISC3LookupTableVisualizer.razor (literal.<n>).
 export const pt: Record<string, string> = {
+  "Language": "Idioma",
+  "Language.pt-PT": "Português",
   "Button.Hide": "Esconder",
   "Button.ShowLookupTable": "Ver Tabela",
   "Button.StartNew": "Começar Novo",

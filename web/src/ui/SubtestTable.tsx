@@ -42,7 +42,7 @@ export function SubtestTable({ data, snapshot, raw, onRaw }: Props) {
               <tr key={t.id} className="bg-gray-100" data-testid={`subtest-row-${t.id}`}>
                 <td className={t.mandatory ? 'bg-gray-400' : 'bg-gray-300'}>
                   <span>{pt[`Test.${t.id}`]}</span>
-                  <svg className={`float-right inline text-red-900 w-6 h-6 ${s.outOfBounds ? '' : 'hidden'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className={`float-right text-red-900 w-6 h-6 ${s.outOfBounds ? 'inline' : 'hidden'}`} viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd">
                       <title>{pt['TestsPatternResults.Error.OutOfBounds'].replace('{0}', String(s.min)).replace('{1}', String(s.max))}</title>
                     </path>
