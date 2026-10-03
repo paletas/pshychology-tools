@@ -209,3 +209,13 @@ table.lk tbody tr:hover td:not(.hit) { background: color-mix(in srgb, var(--petr
 /* Legacy link offline state and theme toggle (REV-10). */
 .topbar button[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .topbar .legacy-note { font-size: 0.8rem; opacity: .85; max-width: 18rem; }
+
+/* Sheet and results details (REV-9, batch 10). */
+.glance:empty { display: none !important; }
+.scaled { min-width: 2ch; }
+.scaled.empty::before { content: "\2013"; }
+.sums-title { font: 600 .95rem var(--serif); margin: 1.1rem 0 0; color: var(--ink-2); }
+.sums-title + .sums { margin-top: .4rem; }
+.who + h2 { margin-top: 0; }
+#LookupTableVisualizer { margin-top: 1rem; }
+.age strong span { font: inherit; color: inherit; }

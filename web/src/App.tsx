@@ -4,16 +4,18 @@ import { chartPayloads } from './engine/charts';
 import { scoreCase } from './engine/scoring';
 import type { Age } from './engine/types';
 import { pt } from './i18n/pt';
+import { ptNew } from './i18n/pt-new';
 import { initReferenceData, takePending } from './refdata/client';
 import type { Loaded } from './refdata/client';
 import { FactorialChart, QiChart, StandardResultsChart } from './ui/Charts';
 import { DataUnavailableBanner, DataUpdatedBanner, UpdateBanner } from './ui/Banners';
 import { DatesPanel } from './ui/DatesPanel';
-import { IndexTable } from './ui/IndexTable';
+import { GlanceStrip, IndexTable } from './ui/IndexTable';
 import type { CiChoice } from './ui/IndexTable';
 import { Layout } from './ui/Layout';
 import { LegacyLink } from './ui/LegacyLink';
 import { LookupTableVisualizer } from './ui/LookupTableVisualizer';
+import { SheetActions } from './ui/SheetActions';
 import { SubtestTable } from './ui/SubtestTable';
 import { ThemeToggle } from './ui/ThemeToggle';
 
@@ -89,7 +91,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   if (!ready || !data || !snapshot) {
     return (
       <Layout legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
-        <div className="flex flex-col space-y-4 mt-2" data-testid="app" data-ready="false">
+        <div data-testid="app" data-ready="false">
           {ready && loadFailed && <DataUnavailableBanner />}
         </div>
       </Layout>
@@ -97,62 +99,56 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   }
 
   const datesSet = testDate !== '' && birthDate !== '';
+  const band = snapshot.bandId ? (data.bands.find((b) => b.id === snapshot.bandId) ?? null) : null;
 
   return (
-    <Layout dataVersion={data.dataVersion} legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
-    <div className="flex flex-col space-y-4 mt-2 px-2" data-testid="app" data-ready="true">
-      {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
-      {dataPending && <DataUpdatedBanner />}
+    <Layout dataVersion={data.dataVersion} glance={<GlanceStrip snapshot={snapshot} />} legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
+      <div data-testid="app" data-ready="true">
+        {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
+        {dataPending && <DataUpdatedBanner />}
 
-      <p className="notice" role="alert">
-        <b>{pt['Warning']}</b> {pt['WarningDetails']}
-      </p>
+        <p className="lede">{ptNew['lede']}</p>
+        <p className="notice" role="alert">
+          <b>{pt['Warning']}</b> {pt['WarningDetails']}
+        </p>
 
-      <div className="flex-initial flex flex-col bg-gray-100 rounded-xl shadow-md items-left p-2 space-y-5">
-        <DatesPanel
-          testDate={testDate}
-          birthDate={birthDate}
-          age={snapshot.age}
-          onTestDate={(v) => setDates(v, birthDate)}
-          onBirthDate={(v) => setDates(testDate, v)}
-          onShowTable={() => setShowTable((s) => !s)}
-          onStartFresh={startFresh}
-        />
+        <div className="layout">
+          <section className="sheet" aria-labelledby="h-sheet">
+            <h2 id="h-sheet">{ptNew['sheet.title']}</h2>
+            <DatesPanel
+              testDate={testDate}
+              birthDate={birthDate}
+              age={snapshot.age}
+              band={band}
+              onTestDate={(v) => setDates(v, birthDate)}
+              onBirthDate={(v) => setDates(testDate, v)}
+            />
+            <SubtestTable data={data} snapshot={snapshot} raw={raw} onRaw={(id, v) => setRaw((r) => ({ ...r, [id]: v }))} />
+            <SheetActions onShowTable={() => setShowTable((s) => !s)} onPrint={() => window.print()} onStartFresh={startFresh} />
 
-        <div>
-          {datesSet && (
-            <div className={showTable ? '' : 'hidden'} id="LookupTableVisualizer">
-              <div className="card card-body overflow-x-auto">
-                <LookupTableVisualizer data={data} bandId={snapshot.bandId} />
+            {datesSet && (
+              <div className={showTable ? '' : 'hidden'} id="LookupTableVisualizer">
+                <div className="card card-body overflow-x-auto">
+                  <LookupTableVisualizer data={data} bandId={snapshot.bandId} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </section>
+
+          <section className="results" aria-labelledby="h-res">
+            <IndexTable snapshot={snapshot} ci={ci} onCi={setCi} />
+          </section>
         </div>
-      </div>
 
-      <div className="flex-1 space-y-4 xl:space-y-0 xl:space-x-4 flex xl:flex-row flex-col text-sm">
-        <SubtestTable data={data} snapshot={snapshot} raw={raw} onRaw={(id, v) => setRaw((r) => ({ ...r, [id]: v }))} />
-
-        <div className="flex-1 bg-gray-100 rounded-xl shadow-md justify-items-center p-2 divide-y-2 focus-within:border-2 focus-within:border-gray-600 overflow-x-auto">
-          <IndexTable snapshot={snapshot} ci={ci} onCi={setCi} />
-
-          <div className="mt-4 w-full justify-items-center focus-within:border-2 focus-within:border-gray-600">
-            <div className="w-full">
-              <QiChart payload={charts} />
-            </div>
+        {/* Chart.js canvases until the SVG charts replace them (batch 11). */}
+        <section className="charts">
+          <div className="fig-grid">
+            <div className="fig wide"><QiChart payload={charts} /></div>
+            <div className="fig"><StandardResultsChart payload={charts} /></div>
+            <div className="fig"><FactorialChart payload={charts} /></div>
           </div>
-        </div>
+        </section>
       </div>
-
-      <div className="flex-auto flex flex-col xl:flex-row bg-gray-100 rounded-xl shadow-md justify-items-center">
-        <div className="flex-1">
-          <StandardResultsChart payload={charts} />
-        </div>
-        <div className="flex-1 pb-2">
-          <FactorialChart payload={charts} />
-        </div>
-      </div>
-    </div>
     </Layout>
   );
 }

@@ -1,20 +1,11 @@
 import { comparisonBand, formatCi, formatPercentile } from '../engine/format';
-import type { ComparisonBand } from '../engine/format';
 import { INDEX_NAMES } from '../engine/types';
 import type { IndexName, Snapshot } from '../engine/types';
 import { pt } from '../i18n/pt';
+import { ptNew } from '../i18n/pt-new';
+import { fmt } from './template';
 
 export type CiChoice = 'Percentil90' | 'Percentil95';
-
-const ARROWS: Record<ComparisonBand, string> = {
-  ExtremelyBelow: 'M19 15l-7 7l-7-7m14-5l-7 7l-7-7m14-5l-7 7l-7-7',
-  FarBelow: 'M19 13l-7 7-7-7m14-8l-7 7-7-7',
-  Below: 'M19 9l-7 7-7-7',
-  OnAverage: 'M16 12l-9 0M16 9l-9 0',
-  Above: 'M5 15l7-7 7 7',
-  FarAbove: 'M5 11l7-7 7 7M5 19l7-7 7 7',
-  ExtremelyAbove: 'M5 11l7-7l7 7M5 16l7-7l7 7M5 21l7-7l7 7',
-};
 
 const UNAVAILABLE_TITLE = 'Soma fora da tabela de conversão';
 
@@ -27,37 +18,58 @@ const LABEL_KEY: Record<IndexName, string> = {
   processingVelocity: 'ProcessingVelocity',
 };
 
+// Strip scale: 55..145 with the 85-115 band, as in the design mock.
+const LO = 55;
+const HI = 145;
+const W = 600;
+const TICKS = [70, 85, 100, 115, 130];
+const clampIq = (v: number) => Math.min(HI, Math.max(LO, v));
+const sx = (v: number) => ((clampIq(v) - LO) / (HI - LO)) * W;
+
+/** One index drawn on the 55..145 scale: confidence-interval bar and a mark for the IQ (999 and out-of-scale values are pinned to the edge). */
+function Strip({ iq, ci }: { iq: number; ci: [number, number] | null }) {
+  return (
+    <svg className="strip" viewBox={`0 0 ${W} 34`} preserveAspectRatio="none" aria-hidden="true" data-testid="strip">
+      <rect x={sx(85)} y="2" width={sx(115) - sx(85)} height="30" fill="var(--band)" />
+      {TICKS.map((v) => <line key={v} x1={sx(v)} x2={sx(v)} y1="6" y2="28" stroke="var(--line)" />)}
+      {ci && <rect x={sx(ci[0])} y="11" width={Math.max(0, sx(ci[1]) - sx(ci[0]))} height="12" rx="6" fill="var(--petrol-soft)" opacity=".55" />}
+      <rect x={sx(iq) - 2} y="5" width="4" height="24" rx="2" fill="var(--petrol)" />
+    </svg>
+  );
+}
+
 interface Props {
   snapshot: Snapshot;
   ci: CiChoice;
   onCi: (v: CiChoice) => void;
 }
 
+/** "Resultados": the 90/95 switch, the six indices as strips, and the empty state. */
 export function IndexTable({ snapshot, ci, onCi }: Props) {
+  const level = ci === 'Percentil90' ? '90' : '95';
   return (
-    <table className="table-fixed rounded-xl bg-gray-600 border-gray-600 border-separate">
-      <thead className="text-white">
-        <tr>
-          <td className="w-2/6"></td>
-          <td className="w-1/6 uppercase font-bold">{pt['TestsPatternResults']}</td>
-          <td className="w-1/6 uppercase font-bold">{pt['QI']}</td>
-          <td className="w-1/6 uppercase font-bold">{pt['Percentil']}</td>
-          <td className="w-1/6 uppercase font-bold">{pt['ConfidenceInterval']}</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td className="uppercase font-bold"></td>
-          <td className="uppercase font-bold"></td>
-          <td className="uppercase font-bold"></td>
-          <td className="uppercase font-bold">
-            <select className="bg-gray-600 text-white text-xs" data-testid="ci-select" value={ci} onChange={(e) => onCi(e.target.value as CiChoice)}>
-              <option value="Percentil90">{pt['literal.2']}</option>
-              <option value="Percentil95">{pt['literal.3']}</option>
-            </select>
-          </td>
-        </tr>
-      </thead>
-      <tbody>
+    <>
+      <h2 id="h-res">{ptNew['results.title']}</h2>
+      <div className="seg" role="group" aria-label={pt['ConfidenceInterval']} data-testid="ci-select">
+        {(['Percentil90', 'Percentil95'] as const).map((c) => {
+          const l = c === 'Percentil90' ? '90' : '95';
+          return (
+            <button key={c} type="button" data-ci={l} aria-pressed={ci === c} onClick={() => onCi(c)}>
+              {ptNew[`ci.${l}`]}
+            </button>
+          );
+        })}
+      </div>
+
+      {!snapshot.indicesShown && <p className="empty-state" data-testid="results-empty">{ptNew['results.empty']}</p>}
+
+      {/* The rows stay in the document (empty) while the empty state shows, so readers always find the cells. */}
+      <div hidden={!snapshot.indicesShown}>
+        {snapshot.indicesShown && (
+          <div className="axis" aria-hidden="true">
+            {TICKS.map((v) => <span key={v} style={{ left: `${((v - LO) / (HI - LO)) * 100}%` }}>{v}</span>)}
+          </div>
+        )}
         {INDEX_NAMES.map((name) => {
           const row = snapshot.indices[name];
           const entry = row?.entry;
@@ -67,28 +79,48 @@ export function IndexTable({ snapshot, ci, onCi }: Props) {
           const ciValue = ok ? (ci === 'Percentil90' ? ok.ci90 : ok.ci95) : null;
           const titleProps = unavailable ? { title: UNAVAILABLE_TITLE } : {};
           return (
-            <tr key={name} data-testid={`index-row-${name}`}>
-              <td className="uppercase text-white font-bold">{pt[`QI.${LABEL_KEY[name]}`]}</td>
-              <td className="bg-gray-200" data-testid={`index-sum-${name}`}>{row ? row.sum : ''}</td>
-              <td className="bg-gray-200" {...titleProps}>
-                <span data-testid={`index-iq-${name}`}>{unavailable ? '—' : ok ? ok.iq : ''}</span>
-                {band && (
-                  <svg className="w-8 h-8 float-right" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-testid={`index-class-${name}`}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ARROWS[band]} />
-                    <title>{pt[`QI.AverageComparison.${band}`]}</title>
-                  </svg>
-                )}
-              </td>
-              <td className="bg-gray-200" data-testid={`index-pct-${name}`} {...titleProps}>
-                {unavailable ? '—' : ok ? formatPercentile(ok.percentile) : ''}
-              </td>
-              <td className="bg-gray-200" data-testid={`index-ci-${name}`} {...titleProps}>
-                {unavailable ? '—' : formatCi(ciValue)}
-              </td>
-            </tr>
+            <div key={name} className={name === 'completeScale' ? 'ix main' : 'ix'} data-testid={`index-row-${name}`}>
+              <div className="ix-top">
+                <b>{pt[`QI.${LABEL_KEY[name]}`]}</b>
+                <span className="iq" data-testid={`index-iq-${name}`} {...titleProps}>{unavailable ? '—' : ok ? ok.iq : ''}</span>
+              </div>
+              {ok && <Strip iq={ok.iq} ci={ciValue} />}
+              <div className="ix-meta">
+                <span>
+                  {ptNew['results.percentile']} <span data-testid={`index-pct-${name}`} {...titleProps}>{unavailable ? '—' : ok ? formatPercentile(ok.percentile) : ''}</span>
+                </span>
+                <span>
+                  {fmt(ptNew['ci.range'], level)} <span data-testid={`index-ci-${name}`} {...titleProps}>{unavailable ? '—' : formatCi(ciValue)}</span>
+                </span>
+                <span>
+                  {ptNew['results.sum']} <span data-testid={`index-sum-${name}`}>{row ? row.sum : ''}</span>
+                </span>
+                {band && <span data-testid={`index-class-${name}`}>{pt[`QI.AverageComparison.${band}`]}</span>}
+              </div>
+            </div>
           );
         })}
-      </tbody>
-    </table>
+        <p className="scale-note">{ptNew['results.scaleNote']}</p>
+      </div>
+    </>
+  );
+}
+
+/** The three headline indices for the compact strip shown below 1100 px. */
+export function GlanceStrip({ snapshot }: { snapshot: Snapshot }) {
+  if (!snapshot.indicesShown) return null;
+  return (
+    <>
+      {(['verbal', 'realization', 'completeScale'] as const).map((name) => {
+        const entry = snapshot.indices[name]?.entry;
+        const iq = entry && entry !== 'unavailable' ? String(entry.iq) : '—';
+        return (
+          <div key={name} data-testid={`glance-${name}`}>
+            <strong>{iq}</strong>
+            <span>{pt[`QI.${LABEL_KEY[name]}`]}</span>
+          </div>
+        );
+      })}
+    </>
   );
 }

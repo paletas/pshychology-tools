@@ -64,6 +64,7 @@ function midRaws(age: [number, number, number]): Record<string, number> {
 }
 
 const text = (id: string) => screen.getByTestId(id).textContent;
+const oobs = () => document.querySelectorAll('[data-testid^="oob-"]');
 
 describe('App', () => {
   it('renders the IQs from scoreCase for a full case', async () => {
@@ -105,14 +106,15 @@ describe('App', () => {
   it('age 5y10m0d shows the blocked state', async () => {
     await renderApp();
     setAge([5, 10, 0]);
-    expect((document.getElementById('subjectAgeYear') as HTMLInputElement).value).toBe('5');
-    expect((document.getElementById('subjectAgeMonth') as HTMLInputElement).value).toBe('10');
-    expect((document.getElementById('subjectAgeDay') as HTMLInputElement).value).toBe('0');
+    expect(text('age-years')).toBe('5');
+    expect(text('age-months')).toBe('10');
+    expect(text('age-days')).toBe('0');
+    expect(screen.queryByTestId('norm-band')).toBeNull();
     const input = screen.getByTestId('raw-Information');
     expect(input.hasAttribute('min')).toBe(false);
     expect(input.hasAttribute('max')).toBe(false);
     setRaw('Information', 5);
-    for (const c of COLUMNS) expect(text(`scaled-Information-${c}`)).toBe('');
+    expect(text('scaled-Information')).toBe('');
     expect(text('sum-complete')).toBe('0');
     expect(text('index-iq-verbal')).toBe('');
     expect(window.__wisc3Debug.snapshot().snapshot!.supported).toBe(false);
@@ -128,7 +130,8 @@ describe('App', () => {
     raw.Code = data.subtests[band].Code.scaled['1'][0];
     for (const [id, v] of Object.entries(raw)) setRaw(id, v);
 
-    expect(text('scaled-Code-processingVelocity')).toBe('1');
+    expect(text('scaled-Code')).toBe('1');
+    expect(screen.getByTestId('scaled-Code').getAttribute('data-columns')).toBe('realization,processingVelocity');
     expect(text('index-sum-processingVelocity')).toBe('1');
     expect(text('index-iq-processingVelocity')).toBe('—');
     expect(text('index-pct-processingVelocity')).toBe('—');
@@ -141,19 +144,19 @@ describe('App', () => {
     await renderApp();
     setAge([11, 8, 0]);
     setRaw('ImageDisposition', 38);
-    expect(text('scaled-ImageDisposition-realization')).toBe('13');
-    expect(text('scaled-ImageDisposition-perceptiveOrganization')).toBe('13');
+    expect(text('scaled-ImageDisposition')).toBe('13');
+    expect(screen.getByTestId('scaled-ImageDisposition').getAttribute('data-columns')).toBe('realization,perceptiveOrganization');
   });
 
-  it('out-of-bounds raw shows the red icon with the resx title', async () => {
+  it('out-of-bounds raw shows one inline message with the resx text', async () => {
     await renderApp();
     const age: [number, number, number] = [9, 3, 12];
     setAge(age);
     const t = scoreCase(data, { testDate: TEST_DATE, birthDate: birthFor(TEST_DATE, age), raw: {} }).tests.Information;
     setRaw('Information', t.max! + 1);
-    const svg = screen.getByTestId('subtest-row-Information').querySelector('svg')!;
-    expect(svg.getAttribute('class')).not.toContain('hidden');
-    expect(svg.querySelector('title')!.textContent).toBe(`Resultado bruto está fora do intervalo de valores esperados (${t.min} - ${t.max})`);
+    expect(oobs()).toHaveLength(1);
+    expect(text('oob-Information')).toBe(`Resultado bruto está fora do intervalo de valores esperados (${t.min} - ${t.max})`);
+    expect(screen.getByTestId('raw-Information').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('never writes to localStorage or sessionStorage', async () => {
@@ -194,17 +197,81 @@ describe('App', () => {
     expect(nav.classList.contains('open')).toBe(false);
   });
 
-  it('no warning icon is displayable before input and one appears for an out-of-bounds raw', async () => {
+  it('lists the subtests in administration order', async () => {
     await renderApp();
-    const icons = () => Array.from(document.querySelectorAll('[data-testid^="subtest-row-"] svg'));
-    for (const i of icons()) expect(i.getAttribute('class')!.split(' ')).toContain('hidden');
-    const age: [number, number, number] = [9, 3, 12];
-    setAge(age);
+    const ids = Array.from(document.querySelectorAll('[data-testid^="subtest-row-"]')).map((e) => e.getAttribute('data-testid')!.slice('subtest-row-'.length));
+    expect(ids).toEqual(['ImageCompletion', 'Information', 'Code', 'Similarities', 'ImageDisposition', 'Arithmetic', 'Cubes', 'Vocabulary', 'ObjectComposition', 'Comprehension', 'SymbolSearch', 'DigitMemory', 'Labyrinth']);
+    expect(ids).toEqual(data.tests.map((t) => t.id));
+    expect(screen.getByTestId('subtest-row-SymbolSearch').textContent).toContain('(opcional)');
+    expect(screen.getByTestId('subtest-row-Code').textContent).not.toContain('(opcional)');
+  });
+
+  it('has no out-of-bounds message before input and exactly one for a raw above the maximum', async () => {
+    await renderApp();
+    expect(oobs()).toHaveLength(0);
+    setAge([9, 3, 12]);
+    expect(oobs()).toHaveLength(0);
     const t = window.__wisc3Debug.snapshot().snapshot!.tests.Information;
     setRaw('Information', String(t.max! + 1));
-    const cls = (id: string) => document.querySelector(`[data-testid="subtest-row-${id}"] svg`)!.getAttribute('class')!.split(' ');
-    expect(cls('Information')).toContain('inline');
-    expect(cls('Information')).not.toContain('hidden');
-    expect(cls('Code')).toContain('hidden');
+    expect(oobs()).toHaveLength(1);
+    setRaw('Information', String(t.max));
+    expect(oobs()).toHaveLength(0);
+  });
+
+  it('shows the live day-count age sentence and the norm band line', async () => {
+    await renderApp();
+    expect(text('age')).toBe('Introduza a data de nascimento e a data do teste.');
+    setAge([9, 3, 12]);
+    const snap = window.__wisc3Debug.snapshot().snapshot!;
+    expect(snap.age).toEqual([9, 3, 12]);
+    expect(text('age-years')).toBe('9');
+    expect(text('age-months')).toBe('3');
+    expect(text('age-days')).toBe('12');
+    expect(screen.getByTestId('age').textContent).toContain('9 anos, 3 meses e 12 dias');
+    expect(text('norm-band')).toBe('Tabela de normas dos 9 anos');
+    setAge([11, 8, 0]);
+    expect(text('norm-band')).toBe('Tabela de normas dos 11 anos e meio');
+    expect(document.getElementById('subjectAgeYear')).toBeNull();
+  });
+
+  it('shows the empty results state until all mandatory raws are in, and the glance strip after', async () => {
+    await renderApp();
+    expect(screen.getByTestId('results-empty')).toBeTruthy();
+    expect(document.getElementById('glance')!.children).toHaveLength(0);
+    const age: [number, number, number] = [9, 3, 12];
+    setAge(age);
+    for (const [id, v] of Object.entries(midRaws(age))) setRaw(id, v);
+    expect(screen.queryByTestId('results-empty')).toBeNull();
+    expect(document.querySelectorAll('[data-testid="strip"]').length).toBeGreaterThan(0);
+    const snap = window.__wisc3Debug.snapshot().snapshot!;
+    const iq = (n: 'verbal' | 'realization' | 'completeScale') => { const e = snap.indices[n]!.entry; return e === 'unavailable' ? '—' : String(e.iq); };
+    expect(document.getElementById('glance')!.children).toHaveLength(3);
+    expect(text('glance-verbal')).toContain(iq('verbal'));
+    expect(text('glance-completeScale')).toContain(iq('completeScale'));
+  });
+
+  it('the 90/95 switch changes the interval shown and data-ci marks the pressed button', async () => {
+    await renderApp();
+    const age: [number, number, number] = [9, 3, 12];
+    setAge(age);
+    for (const [id, v] of Object.entries(midRaws(age))) setRaw(id, v);
+    const snap = window.__wisc3Debug.snapshot().snapshot!;
+    const e = snap.indices.verbal!.entry;
+    if (e === 'unavailable') throw new Error('expected an available verbal index');
+    const pressed = () => document.querySelector('[data-testid="ci-select"] [aria-pressed="true"]')!.getAttribute('data-ci');
+    expect(pressed()).toBe('95');
+    expect(text('index-ci-verbal')).toBe(`${e.ci95[0]} - ${e.ci95[1]}`);
+    fireEvent.click(document.querySelector('[data-testid="ci-select"] [data-ci="90"]')!);
+    expect(pressed()).toBe('90');
+    expect(text('index-ci-verbal')).toBe(`${e.ci90[0]} - ${e.ci90[1]}`);
+  });
+
+  it('Imprimir calls window.print and the sums keep their test ids', async () => {
+    await renderApp();
+    const spy = vi.fn();
+    window.print = spy as never;
+    fireEvent.click(screen.getByTestId('print'));
+    expect(spy).toHaveBeenCalledTimes(1);
+    for (const k of [...COLUMNS, 'complete']) expect(screen.getByTestId(`sum-${k}`)).toBeTruthy();
   });
 });
