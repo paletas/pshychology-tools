@@ -1,0 +1,17 @@
+{
+  "corrections": [
+    {
+      "id": "C1",
+      "band": "11y06m",
+      "test": "ImageDisposition",
+      "raw": 38,
+      "old": "throws",
+      "scaled": 13,
+      "equivalentRaw": 39,
+      "oldSource": "ElevenYearSixMonthLookupTable.cs:224 (35-37 -> 12, 39-41 -> 13; 38 unmapped)",
+      "source": "WISC-III PT manual, Table 36 (11 1/2 anos), Disposicao de Gravuras: scaled 13 = raw 38-41",
+      "confirmedBy": "user",
+      "confirmedOn": "2026-10-03"
+    }
+  ]
+}
