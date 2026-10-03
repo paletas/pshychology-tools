@@ -35,7 +35,9 @@ switch (args[0])
             var output = Arg(args, "--out");
             if (input == null || output == null) { Console.Error.WriteLine(usage); return 2; }
             var cases = JsonSerializer.Deserialize<List<Scenario>>(File.ReadAllText(input), Json.Options)!;
-            var results = cases.Select(ScenarioDriver.Run).ToList();
+            List<ScenarioResult> results;
+            try { results = cases.Select(ScenarioDriver.Run).ToList(); }
+            catch (OutOfScopeException e) { Console.Error.WriteLine(e.Message); return 1; }
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
             File.WriteAllText(output, Json.Serialize(results), new UTF8Encoding(false));
             Console.WriteLine($"scenarios: {results.Count} cases -> {output}");

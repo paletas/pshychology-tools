@@ -3,6 +3,8 @@ import { pt } from '../../../../web/src/i18n/pt';
 import type { IndexName } from '../../../../web/src/engine/types';
 import { INDEX_NAMES } from '../../../../web/src/engine/types';
 import type { CaseRecord } from '../../scripts/generate-cases';
+import { classifyOld } from './old-console';
+import type { OldCaseCtx, OldConsoleLog } from './old-console';
 import { emptyReading, LABEL_KEY, norm, normCi, type Cols5, type Reading } from './reading';
 
 export const OLD_URL = 'http://localhost:5100/wisc3';
@@ -46,16 +48,19 @@ export async function installOldTraps(context: BrowserContext): Promise<void> {
   });
 }
 
-const errorUiVisible = (page: Page) => page.locator('#blazor-error-ui').isVisible();
+/** A record of the given kind at index >= mark (an old-app crash is a console exception classified by stack frame). */
+const sawKind = (log: OldConsoleLog, mark: number, kind: string, ctx: OldCaseCtx) =>
+  log.records.slice(mark).some((r) => classifyOld(r.text, ctx, r.url) === kind);
 
-async function waitAgeFilled(page: Page): Promise<'ok' | 'crashed' | 'timeout'> {
+async function waitAgeFilled(page: Page, log: OldConsoleLog, ctx: OldCaseCtx): Promise<'ok' | 'crashed' | 'timeout'> {
+  const mark = 0;
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
-    if (await errorUiVisible(page)) return 'crashed';
+    if (sawKind(log, mark, 'age-throw', ctx)) return 'crashed';
     if ((await page.locator('#subjectAgeYear').inputValue()) !== '') return 'ok';
     await page.waitForTimeout(100);
   }
-  return 'timeout';
+  return sawKind(log, mark, 'age-throw', ctx) ? 'crashed' : 'timeout';
 }
 
 async function enterDates(page: Page, c: CaseRecord): Promise<void> {
@@ -110,22 +115,24 @@ function readDom(page: Page): Promise<Dom> {
 }
 
 /** Reads the old app for a case (page already at OLD_URL, traps installed). */
-export async function readOld(page: Page, c: CaseRecord, predictedAgeNonNull: boolean): Promise<Reading> {
+export interface OldReadCtx extends OldCaseCtx {
+  age: number[] | null;
+  /** the test whose raw the oracle predicts to throw (raw-stage crash), else null */
+  throwAtTest: string | null;
+}
+
+export async function readOld(page: Page, c: CaseRecord, ctx: OldReadCtx, log: OldConsoleLog): Promise<Reading> {
   await page.waitForFunction(() => !!(window as any).Blazor, undefined, { timeout: 30_000 });
   await enterDates(page, c);
 
-  if (predictedAgeNonNull) {
-    let r = await waitAgeFilled(page);
-    if (r === 'timeout') {
-      await enterDates(page, c);
-      r = await waitAgeFilled(page);
-    }
-    if (r === 'crashed') return emptyReading({ stage: 'age', test: null });
-    if (r === 'timeout') throw new Error('old app: age fields did not fill');
-  } else {
-    await page.waitForTimeout(2000);
-    if (await errorUiVisible(page)) return emptyReading({ stage: 'age', test: null });
+  if (ctx.age === null) throw new Error('out of scope: test date <= birth date');
+  let r = await waitAgeFilled(page, log, ctx);
+  if (r === 'timeout') {
+    await enterDates(page, c);
+    r = await waitAgeFilled(page, log, ctx);
   }
+  if (r === 'crashed') return emptyReading({ stage: 'age', test: null });
+  if (r === 'timeout') throw new Error('old app: age fields did not fill');
 
   const dom0 = await readDom(page);
   if (dom0.rows.length !== 13) throw new Error(`old app: expected 13 test rows, found ${dom0.rows.length}`);
@@ -135,10 +142,17 @@ export async function readOld(page: Page, c: CaseRecord, predictedAgeNonNull: bo
     if (v === null || v === undefined) continue;
     const idx = dom0.rows.findIndex((r) => norm(r.label) === norm(pt[`Test.${id}`]));
     if (idx < 0) throw new Error(`old app: no row for ${id}`);
-    const input = subTable.locator('tbody > tr').nth(idx).locator('input[type=number]');
+    const row = subTable.locator('tbody > tr').nth(idx);
+    const input = row.locator('input[type=number]');
+    const scaledText = () => row.locator(':scope > td').evaluateAll((tds) => tds.slice(2, 7).map((td) => td.textContent ?? '').join('|'));
+    const before = await scaledText();
+    const mark = log.records.length;
     await input.fill(String(v));
     await input.press('Tab');
-    if (await errorUiVisible(page)) return emptyReading({ stage: 'raw', test: id });
+    // wait until the row's scaled cells change, or 1 s (3 s when the oracle predicts the throw at this test)
+    const deadline = Date.now() + (ctx.throwAtTest === id ? 3000 : 1000);
+    while (Date.now() < deadline && (await scaledText()) === before && !sawKind(log, mark, 'raw-throw', ctx)) await page.waitForTimeout(50);
+    if (sawKind(log, mark, 'raw-throw', ctx)) return emptyReading({ stage: 'raw', test: id });
   }
   await page.waitForTimeout(150);
 

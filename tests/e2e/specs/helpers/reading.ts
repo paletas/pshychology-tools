@@ -4,7 +4,7 @@ export type Cols5 = [string, string, string, string, string];
 
 /** What one app shows for a case, as normalized text (the common form of readers and expectations). */
 export interface Reading {
-  /** set when the old app crashed (#blazor-error-ui); everything else is then empty */
+  /** set when the old app crashed (console exception classified by stack frame); everything else is then empty */
   crashed: { stage: 'age' | 'raw'; test: string | null } | null;
   age: (number | null)[];
   /** scaled cells by test id (5 columns, '' when empty) */

@@ -156,7 +156,20 @@ public static class Golden
         scenarios.AddRange(forced);
         results.AddRange(forced.Select(ScenarioDriver.Run));
         Console.WriteLine("forcedPerId=3");
-        Write(outDir, "scenarios.json", scenarios.Zip(results, (s, r) => new { s.Id, s.TestDate, s.BirthDate, s.Raw, old = r.Old, correctionsHit = r.CorrectionsHit, oldCorrected = r.OldCorrected }).ToList());
+
+        // ---- old console prediction summary (cases per kind) + assertions
+        int KindCases(string k) => results.Count(r => r.OldConsole!.Any(c => c.Kind == k));
+        var kindCounts = OldConsole.Kinds.ToDictionary(k => k, KindCases);
+        Console.WriteLine($"oldConsoleKinds age-throw={kindCounts["age-throw"]} raw-throw={kindCounts["raw-throw"]} visualizer-raw-throw={kindCounts["visualizer-raw-throw"]} visualizer-index-throw={kindCounts["visualizer-index-throw"]}");
+        var badViz = results.Zip(scenarios, (r, sc) => (r, sc)).Where(x => x.r.OldConsole!.Any(c => c.Kind == "visualizer-raw-throw" && !(x.r.Old.BandId == "11y06m" && c.Test == "ImageDisposition" && c.Raw == 38))).Select(x => x.r.Id).ToList();
+        if (badViz.Count > 0 || kindCounts["visualizer-raw-throw"] == 0
+            || kindCounts["age-throw"] != results.Count(r => r.Old.ThrowStage == "age")
+            || kindCounts["raw-throw"] != results.Count(r => r.Old.ThrowStage == "raw"))
+        {
+            Console.Error.WriteLine($"ASSERTION FAILED: oldConsole kinds {string.Join(",", kindCounts.Select(kv => kv.Key + "=" + kv.Value))} badVisualizerRaw={string.Join(";", badViz.Take(10))}");
+            return 1;
+        }
+        Write(outDir, "scenarios.json", scenarios.Zip(results, (s, r) => new { s.Id, s.TestDate, s.BirthDate, s.Raw, old = r.Old, correctionsHit = r.CorrectionsHit, oldCorrected = r.OldCorrected, oldConsole = r.OldConsole }).ToList());
 
         // ---- findings.json
         Write(outDir, "findings.json", Findings.Build(indices, scenarios, results, gateEntries, gapsBefore, corrections));

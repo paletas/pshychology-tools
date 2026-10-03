@@ -1,4 +1,4 @@
-// Seeded case generator for the old-vs-new comparison. Output: tests/e2e/.tmp/cases.json (200 cases).
+// Seeded case generator for the old-vs-new comparison. Output: tests/e2e/.tmp/cases.json (200 cases: 170 stratified + 30 edge).
 // Run from tests/e2e: npx tsx scripts/generate-cases.ts
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -76,8 +76,8 @@ const add = (id: string, kind: string, testDate: string, age: Age | null, raw: R
   cases.push({ id, kind, testDate, birthDate: birthDate ?? birthFor(testDate, age!), raw });
 };
 
-// 168 stratified: 8 per band, 7 in these bands (makes room for the 8 forced correction edge cases)
-const SEVEN = new Set(['06y06m', '07y06m', '08y06m', '09y06m', '13y06m', '14y06m', '15y06m', '16y06m']);
+// 170 stratified: 8 per band, 7 in these bands (makes room for the 8 forced correction edge cases)
+const SEVEN = new Set(['08y06m', '09y06m', '13y06m', '14y06m', '15y06m', '16y06m']);
 for (const band of data.bands) {
   for (let i = 1; i <= (SEVEN.has(band.id) ? 7 : 8); i++) {
     let age: Age;
@@ -88,7 +88,7 @@ for (const band of data.bands) {
   }
 }
 
-// 32 edge cases (24 + one forced case per D id, below)
+// 30 edge cases (22 + one forced case per D id, below). Test date on or before the birth date is out of scope (REV-6).
 const D0 = '2026-03-15';
 const GATE_BAND = '06y06m';
 const MID_BAND = '10y00m';
@@ -110,8 +110,6 @@ add('edge-all-min', 'edge-all-min', D0, MID_AGE, rawsFor(MID_BAND, 'min'));
   raw.Information = data.subtests[MID_BAND].Information.max + 1;
   add('edge-raw-max-plus-one', 'edge-raw-max-plus-one', D0, MID_AGE, raw);
 }
-add('edge-test-equals-birth', 'edge-test-equals-birth', '2024-05-05', null, rawsFor(MID_BAND), '2024-05-05');
-add('edge-test-before-birth', 'edge-test-before-birth', '2024-05-01', null, rawsFor(MID_BAND), '2024-06-01');
 add('edge-birth-leap-day', 'edge-birth-leap-day', '2023-02-28', null, rawsFor(MID_BAND), '2016-02-29');
 {
   const raw = rawsFor(MID_BAND);
@@ -214,6 +212,11 @@ add('edge-manual-correction', 'edge-manual-correction', D0, [11, 8, 15], { ...ra
 const stratified = cases.filter((c) => c.kind === 'stratified').length;
 const edge = cases.length - stratified;
 if (new Set(cases.map((c) => c.id)).size !== cases.length) throw new Error('duplicate case ids');
+const outOfScope = cases.filter((c) => c.testDate <= c.birthDate);
+if (outOfScope.length > 0) {
+  console.error(`out of scope: test date <= birth date (case ${outOfScope[0].id})`);
+  process.exit(1);
+}
 
 const out = join(e2eDir, '.tmp/cases.json');
 mkdirSync(dirname(out), { recursive: true });

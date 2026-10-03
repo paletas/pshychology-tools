@@ -14,9 +14,11 @@ import { canvasInkRatio, NEW_CHARTS, OLD_CHART_INSTANCES, oldCanvasInkRatio } fr
 import { diff, uncovered } from '../helpers/compare';
 import type { FieldDiff, Verdict } from '../helpers/compare';
 import { collectErrors } from '../helpers/console';
-import type { ConsoleOptions, ErrorLog } from '../helpers/console';
+import type { ErrorLog } from '../helpers/console';
 import { expectedNew, expectedOld } from '../helpers/expected';
 import { e2eDir, reportsDir } from '../helpers/paths';
+import { collectOldConsole, evaluateOldConsole } from '../helpers/old-console';
+import type { OldConsoleLog, PredictedOldConsole } from '../helpers/old-console';
 import { readNew } from '../helpers/read-new';
 import { installOldTraps, OLD_URL, readOld } from '../helpers/read-old';
 
@@ -29,6 +31,7 @@ interface Prediction {
   old: OldResult;
   correctionsHit?: string[];
   oldCorrected?: OldResult;
+  oldConsole?: PredictedOldConsole[];
 }
 const cases: CaseRecord[] = JSON.parse(readFileSync(casesFile, 'utf8'));
 const predictions = new Map<string, Prediction>((JSON.parse(readFileSync(predFile, 'utf8')) as Prediction[]).map((p) => [p.id, p]));
@@ -65,9 +68,8 @@ let oldPage: Page;
 let newPage: Page;
 let oldAds: AdLog;
 let newAds: AdLog;
-let oldLog: ErrorLog;
+let oldLog: OldConsoleLog;
 let newLog: ErrorLog;
-const oldOpts: ConsoleOptions = { oldNullChart: true, oldThrows: false };
 
 test.beforeAll(async ({ browser }) => {
   oldCtx = await browser.newContext();
@@ -77,7 +79,7 @@ test.beforeAll(async ({ browser }) => {
   newAds = await blockAds(newCtx);
   oldPage = await oldCtx.newPage();
   newPage = await newCtx.newPage();
-  oldLog = collectErrors(oldPage, oldOpts);
+  oldLog = collectOldConsole(oldPage);
   newLog = collectErrors(newPage);
 });
 
@@ -108,15 +110,16 @@ for (const c of cases) {
       record.expectedOldCrash = expOld.crashed;
 
       // old app
-      oldOpts.oldThrows = pred.old.throws;
+      const oldCtx = { oldConsole: pred.oldConsole ?? [] };
       oldLog.clear();
       await oldPage.goto(OLD_URL);
-      const oldRead = await readOld(oldPage, c, pred.old.age !== null);
+      const oldRead = await readOld(oldPage, c, { ...oldCtx, age: pred.old.age, throwAtTest: pred.old.throwAt?.test ?? null }, oldLog);
       const oldIndicesShown = pred.old.indicesShown && !pred.old.throws;
       let oldInk: number[] = [0, 0, 0];
       if (oldIndicesShown) oldInk = await Promise.all(OLD_CHART_INSTANCES.map((i) => pollInk(() => oldCanvasInkRatio(oldPage, i))));
       if (REVIEW_IDS.has(c.id)) await oldPage.screenshot({ path: join(chartsDir, `${c.id}-old.png`), fullPage: true });
-      const oldErrors = [...oldLog.errors];
+      const oldConsole = evaluateOldConsole(oldLog.records, oldCtx);
+      const oldErrors = oldLog.records.map((r) => r.text);
 
       // new app (reloads inside readNew)
       newLog.clear();
@@ -138,6 +141,8 @@ for (const c of cases) {
         chartInk: { old: oldInk, new: newInk },
         blankCharts: { old: blankOld, new: blankNew },
         consoleErrors: { old: oldErrors, new: newErrors },
+        oldConsole,
+        oldCrash: { observed: oldRead.crashed, predicted: expOld.crashed },
         oldVsPrediction: oldVsPred,
         newVsFixedModel: newVsFixed,
         oldVsNew,
@@ -146,8 +151,12 @@ for (const c of cases) {
         newReading: newRead,
       });
 
-      if (oldVsPred.length > 0 || blankOld) verdict = 'old-model-mismatch';
-      else if (newVsFixed.length > 0 || notCovered.length > 0 || blankNew || newErrors.length > 0 || oldErrors.length > 0) verdict = 'regression';
+      // old-side console verdict: unclassified record or classified kind not predicted -> regression; predicted kind not observed -> old-model-mismatch
+      const oldRegression = oldConsole.unclassified.length > 0 || oldConsole.observed.some((k) => !oldConsole.predicted.includes(k));
+      const oldMissing = oldConsole.predicted.some((k) => !oldConsole.observed.includes(k));
+      if (oldRegression) verdict = 'regression';
+      else if (oldVsPred.length > 0 || blankOld || oldMissing) verdict = 'old-model-mismatch';
+      else if (newVsFixed.length > 0 || notCovered.length > 0 || blankNew || newErrors.length > 0) verdict = 'regression';
       else verdict = tags.length > 0 && oldVsNew.length > 0 ? 'expected-diff' : 'pass';
     } catch (e) {
       record.error = String((e as Error).stack ?? e);
