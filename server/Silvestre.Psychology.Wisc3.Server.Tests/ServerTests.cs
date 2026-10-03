@@ -175,4 +175,66 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
         var resp = await client.PostAsync("/api/reference/manifest", new StringContent("{}"));
         Assert.Equal(HttpStatusCode.MethodNotAllowed, resp.StatusCode);
     }
+    private static async Task<(HttpResponseMessage Resp, string Body)> GetConfigAsync(ServerFixture fx)
+    {
+        var resp = await fx.CreateClient().GetAsync("/config.json");
+        return (resp, await resp.Content.ReadAsStringAsync());
+    }
+
+    private static void AssertNoSetCookie(HttpResponseMessage resp) =>
+        Assert.False(resp.Headers.Contains("Set-Cookie"), "the server never sets cookies");
+
+    [Fact]
+    public async Task Config_Empty()
+    {
+        var (resp, body) = await GetConfigAsync(_fx);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("no-cache", resp.Headers.CacheControl?.ToString());
+        Assert.Equal("application/json", resp.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(JsonValueKind.Null, JsonDocument.Parse(body).RootElement.GetProperty("legacyUrl").ValueKind);
+        AssertNoSetCookie(resp);
+        // no cookie on the other responses either
+        foreach (var path in new[] { "/healthz", "/wisc3", "/api/reference/manifest", "/service-worker.js" })
+            AssertNoSetCookie(await _fx.CreateClient().GetAsync(path));
+    }
+
+    [Fact]
+    public async Task Config_Set()
+    {
+        using var fx = ServerFixture.WithLegacyUrl("https://old.example.org/wisc3");
+        var (resp, body) = await GetConfigAsync(fx);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("https://old.example.org/wisc3", JsonDocument.Parse(body).RootElement.GetProperty("legacyUrl").GetString());
+        AssertNoSetCookie(resp);
+    }
+
+    [Fact]
+    public async Task Config_Invalid()
+    {
+        foreach (var value in new[] { "javascript:alert(1)", "/relative/path", "ftp://old.example.org", "not a url" })
+        {
+            using var fx = ServerFixture.WithLegacyUrl(value);
+            var (resp, body) = await GetConfigAsync(fx);
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+            Assert.Equal(JsonValueKind.Null, JsonDocument.Parse(body).RootElement.GetProperty("legacyUrl").ValueKind);
+        }
+    }
+
+    [Fact]
+    public async Task Head_Config()
+    {
+        var client = _fx.CreateClient();
+        var get = await client.GetAsync("/config.json");
+        var head = await HeadAsync(client, "/config.json");
+        Assert.Equal(HttpStatusCode.OK, head.StatusCode);
+        Assert.Equal("no-cache", head.Headers.CacheControl?.ToString());
+        Assert.NotNull(head.Headers.ETag);
+        Assert.Equal(get.Headers.ETag?.Tag, head.Headers.ETag?.Tag);
+        Assert.Empty(await head.Content.ReadAsByteArrayAsync());
+        AssertNoSetCookie(head);
+
+        var req = new HttpRequestMessage(HttpMethod.Get, "/config.json");
+        req.Headers.TryAddWithoutValidation("If-None-Match", get.Headers.ETag!.Tag);
+        Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(req)).StatusCode);
+    }
 }

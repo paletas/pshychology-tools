@@ -1,6 +1,8 @@
 import { setCacheNameDetails } from 'workbox-core';
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+import { ExpirationPlugin } from 'workbox-expiration';
 import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate } from 'workbox-strategies';
 
 // Minimal typing of the worker scope (the app tsconfig uses the DOM lib).
 interface WorkerEvent {
@@ -29,6 +31,13 @@ registerRoute(
   ({ request, url }) =>
     request.mode === 'navigate' && url.origin === sw.location.origin && (url.pathname === '/' || url.pathname === '/wisc3'),
   createHandlerBoundToURL('/index.html'),
+);
+
+// Runtime config for the "Versão anterior" link: same-origin /config.json only, stale-while-revalidate, one entry.
+// Navigation is never intercepted by this route.
+registerRoute(
+  ({ request, url }) => request.mode !== 'navigate' && url.origin === sw.location.origin && url.pathname === '/config.json',
+  new StaleWhileRevalidate({ cacheName: 'wisc3-config', plugins: [new ExpirationPlugin({ maxEntries: 1 })] }),
 );
 
 // First install (no meta cache yet, e.g. replacing the old stub) takes over at once; later updates wait for the user.

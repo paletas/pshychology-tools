@@ -8,6 +8,15 @@ var dataPath = Path.GetFullPath(builder.Configuration["ReferenceData:Path"] ?? "
 
 builder.Services.AddSingleton(new ReferenceDataStore(dataPath));
 
+// Runtime config for the "Versão anterior" link: only an absolute http(s) URL counts, anything else is unset.
+var legacyRaw = builder.Configuration["Legacy:Url"];
+string? legacyUrl = Uri.TryCreate(legacyRaw?.Trim(), UriKind.Absolute, out var legacyUri)
+    && (legacyUri.Scheme == Uri.UriSchemeHttp || legacyUri.Scheme == Uri.UriSchemeHttps)
+    ? legacyUri.AbsoluteUri
+    : null;
+var configBytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(new { legacyUrl }));
+var configEtag = $"\"{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(configBytes)).ToLowerInvariant()}\"";
+
 var app = builder.Build();
 
 const string NoCache = "no-cache";
@@ -23,6 +32,17 @@ app.MapMethods("/wisc3", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpConte
     if (!File.Exists(index)) return Results.NotFound();
     ctx.Response.Headers.CacheControl = NoCache;
     return Results.File(index, "text/html; charset=utf-8");
+});
+
+app.MapMethods("/config.json", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext ctx) =>
+{
+    ctx.Response.Headers.CacheControl = NoCache;
+    ctx.Response.Headers.ETag = configEtag;
+    if (ctx.Request.Headers.IfNoneMatch.ToString().Split(',').Select(v => v.Trim()).Contains(configEtag))
+    {
+        return Results.StatusCode(StatusCodes.Status304NotModified);
+    }
+    return Results.Bytes(configBytes, "application/json");
 });
 
 app.MapMethods("/api/reference/manifest", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext ctx, ReferenceDataStore store) =>

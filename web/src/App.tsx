@@ -12,8 +12,10 @@ import { DatesPanel } from './ui/DatesPanel';
 import { IndexTable } from './ui/IndexTable';
 import type { CiChoice } from './ui/IndexTable';
 import { Layout } from './ui/Layout';
+import { LegacyLink } from './ui/LegacyLink';
 import { LookupTableVisualizer } from './ui/LookupTableVisualizer';
 import { SubtestTable } from './ui/SubtestTable';
+import { ThemeToggle } from './ui/ThemeToggle';
 
 /** Bridge to the service worker registration done in main.tsx. */
 export interface SwUpdate {
@@ -86,7 +88,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
 
   if (!ready || !data || !snapshot) {
     return (
-      <Layout>
+      <Layout legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
         <div className="flex flex-col space-y-4 mt-2" data-testid="app" data-ready="false">
           {ready && loadFailed && <DataUnavailableBanner />}
         </div>
@@ -97,7 +99,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   const datesSet = testDate !== '' && birthDate !== '';
 
   return (
-    <Layout dataVersion={data.dataVersion}>
+    <Layout dataVersion={data.dataVersion} legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
     <div className="flex flex-col space-y-4 mt-2 px-2" data-testid="app" data-ready="true">
       {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
       {dataPending && <DataUpdatedBanner />}

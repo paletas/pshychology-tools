@@ -20,8 +20,19 @@ describe('static guards on web/src', () => {
     expect(files.length).toBeGreaterThan(15);
   });
 
-  it('never touches localStorage, sessionStorage or cookies', () => {
-    for (const f of files) expect(f.text, f.path).not.toMatch(/localStorage|sessionStorage|document\.cookie/);
+  it('never touches localStorage or sessionStorage', () => {
+    for (const f of files) expect(f.text, f.path).not.toMatch(/localStorage|sessionStorage/);
+  });
+
+  it('uses document.cookie only in theme/themeCookie.ts, with the fixed name and values (REV-10)', () => {
+    for (const f of files.filter((x) => x.path !== 'theme/themeCookie.ts')) expect(f.text, f.path).not.toMatch(/document\.cookie/);
+    const t = read('theme/themeCookie.ts');
+    expect(t.match(/document\.cookie/g)!.length).toBe(2);
+    expect(t).toMatch(/THEME_COOKIE = 'wisc3-theme'/);
+    expect(t).toMatch(/value === 'light' \|\| value === 'dark'/);
+    expect(t).toMatch(/Path=\/; Max-Age=\$\{MAX_AGE_SECONDS\}; SameSite=Lax/);
+    expect(t).not.toMatch(/domain=|HttpOnly/i);
+    for (const f of files.filter((x) => x.path !== 'theme/themeCookie.ts')) expect(f.text, f.path).not.toMatch(/wisc3-theme/);
   });
 
   it('uses idb / indexedDB only under src/refdata/', () => {

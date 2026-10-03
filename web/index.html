@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
+    <script>
+        // Applies the saved theme (cookie wisc3-theme) before the first paint, so there is no flash.
+        (function () {
+            try {
+                var m = /(?:^|; )wisc3-theme=(light|dark)(?:;|$)/.exec(document.cookie);
+                if (m) document.documentElement.dataset.theme = m[1];
+            } catch (e) { }
+        })();
+    </script>
     <script data-ad-client="ca-pub-7199897902029134" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
     <meta charset="utf-8" />
     <title>WISC-III</title>
