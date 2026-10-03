@@ -36,8 +36,13 @@ async function measure(page: Page, app: 'old' | 'new'): Promise<number> {
     await fillDates(page, TEST_DATE, BIRTH_DATE);
   }
   const deadline = Date.now() + 60_000;
+  let lastEntry = Date.now();
   while (!(await ageFilled(page))) {
     if (Date.now() > deadline) throw new Error(`${app}: age fields never filled`);
+    if (app === 'old' && Date.now() - lastEntry > 1_500) {
+      await fillDates(page, TEST_DATE, BIRTH_DATE);
+      lastEntry = Date.now();
+    }
     await page.waitForTimeout(25);
   }
   return Date.now() - t0;

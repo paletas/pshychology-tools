@@ -94,7 +94,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   const datesSet = testDate !== '' && birthDate !== '';
 
   return (
-    <div className="flex flex-col space-y-4 flex-wrap mt-2 px-2" data-testid="app" data-ready="true">
+    <div className="flex flex-col space-y-4 mt-2 px-2" data-testid="app" data-ready="true">
       {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
       {dataPending && <DataUpdatedBanner />}
 
