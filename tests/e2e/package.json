@@ -1,0 +1,20 @@
+{
+  "name": "wisc3-e2e",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "old:publish": "node scripts/old-publish.mjs",
+    "test:behaviour": "playwright test -c playwright.behaviour.config.ts",
+    "test:compare": "node scripts/run-compare.mjs",
+    "test:timing": "playwright test -c playwright.compare.config.ts --project=timing",
+    "report:flagged": "tsx scripts/flagged-issues.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
