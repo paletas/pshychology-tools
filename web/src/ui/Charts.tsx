@@ -103,7 +103,7 @@ function factorialConfig(p: ChartPayloads['factorial']): any {
   };
 }
 
-function qiConfig(p: ChartPayloads['qi']): any {
+export function qiConfig(p: ChartPayloads['qi']): any {
   // an unavailable index has all-null values: leave its slot empty
   const slot = (e: ChartPayloads['qi']['QI'][number]) => (e.median === null ? null : e);
   const box = (backgroundColor: string, borderColor: string, label: string, data: unknown[]) => ({
