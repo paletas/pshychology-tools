@@ -217,5 +217,4 @@ table.lk tbody tr:hover td:not(.hit) { background: color-mix(in srgb, var(--petr
 .sums-title { font: 600 .95rem var(--serif); margin: 1.1rem 0 0; color: var(--ink-2); }
 .sums-title + .sums { margin-top: .4rem; }
 .who + h2 { margin-top: 0; }
-#LookupTableVisualizer { margin-top: 1rem; }
 .age strong span { font: inherit; color: inherit; }

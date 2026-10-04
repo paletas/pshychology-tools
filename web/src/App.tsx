@@ -15,7 +15,7 @@ import { GlanceStrip, IndexTable } from './ui/IndexTable';
 import type { CiChoice } from './ui/IndexTable';
 import { Layout } from './ui/Layout';
 import { LegacyLink } from './ui/LegacyLink';
-import { LookupTableVisualizer } from './ui/LookupTableVisualizer';
+import { LookupDialog } from './ui/LookupDialog';
 import { SheetActions } from './ui/SheetActions';
 import { dateGuard, localToday, parseRaw, resultsReason } from './ui/guards/inputGuards';
 import { SubtestTable } from './ui/SubtestTable';
@@ -126,7 +126,6 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
     );
   }
 
-  const datesSet = testDate !== '' && birthDate !== '';
   const band = snapshot.bandId ? (data.bands.find((b) => b.id === snapshot.bandId) ?? null) : null;
 
   return (
@@ -153,21 +152,15 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
               onBirthDate={(v, bad) => setDates(testDate, v, testBad, bad)}
             />
             <SubtestTable data={data} snapshot={snapshot} rawText={rawText} rawErrors={rawErrors} onRawText={(id, text) => setRawText((r) => ({ ...r, [id]: text }))} />
-            <SheetActions onShowTable={() => setShowTable((s) => !s)} onPrint={() => window.print()} onStartFresh={startFresh} />
-
-            {datesSet && (
-              <div className={showTable ? '' : 'hidden'} id="LookupTableVisualizer">
-                <div className="card card-body overflow-x-auto">
-                  <LookupTableVisualizer data={data} bandId={snapshot.bandId} />
-                </div>
-              </div>
-            )}
+            <SheetActions onShowTable={() => setShowTable(true)} onPrint={() => window.print()} onStartFresh={startFresh} />
           </section>
 
           <section className="results" aria-labelledby="h-res">
             <IndexTable snapshot={snapshot} reason={reason} ci={ci} onCi={setCi} />
           </section>
         </div>
+
+        <LookupDialog open={showTable} onClose={() => setShowTable(false)} data={data} band={band} guardOk={guard.state === 'ok'} raw={raw} />
 
         <ChartsSection payload={charts} derived={derived} ci={ci} optional={optional} />
       </div>
