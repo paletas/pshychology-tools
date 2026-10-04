@@ -1,3 +1,4 @@
+import { ChartEmpty } from './ChartEmpty';
 import { C, MIN_WIDTH, Txt, frame, useWidth } from './frame';
 import type { ChartPayloads } from '../engine/charts';
 import { ptNew } from '../i18n/pt-new';
@@ -12,7 +13,7 @@ export function IqChart({ payload, ci }: { payload: ChartPayloads | null; ci: Iq
   return (
     <figure className="fig wide">
       <figcaption>{ptNew['chart.qi.title']}</figcaption>
-      <div className="fig-body" ref={ref}>{payload && <IqSvg payload={payload.qi} ci={ci} w={w} />}</div>
+      <div className="fig-body" ref={ref}>{payload ? <IqSvg payload={payload.qi} ci={ci} w={w} /> : <ChartEmpty kind="qi" />}</div>
       <p className="legend"><i className="sw band" />{ptNew['chart.qi.band']} <i className="sw ci" />{ptNew['chart.qi.ci']} <i className="sw v" />{ptNew['chart.qi.result']}</p>
     </figure>
   );

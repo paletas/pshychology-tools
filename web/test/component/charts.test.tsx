@@ -188,9 +188,14 @@ describe('SVG charts', () => {
     expect(height('Percentil90')).toBeLessThan(height('Percentil95'));
   });
 
-  it('draws no SVG without a payload', () => {
+  it('a null payload renders the three empty states and no marks (REV-12)', () => {
     const { container } = show(null);
     expect(container.querySelectorAll('svg')).toHaveLength(0);
+    for (const k of ['standard', 'factorial', 'qi']) {
+      const el = container.querySelector(`[data-testid="chart-empty-${k}"]`)!;
+      expect(el.textContent).toBe(ptNew['chart.empty']);
+      expect(el.getAttribute('data-marks')).toBe('0');
+    }
     expect(container.querySelectorAll('figure.fig')).toHaveLength(3);
   });
 });

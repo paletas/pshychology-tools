@@ -212,6 +212,8 @@ add('edge-manual-correction', 'edge-manual-correction', D0, [11, 8, 15], { ...ra
 const stratified = cases.filter((c) => c.kind === 'stratified').length;
 const edge = cases.length - stratified;
 if (new Set(cases.map((c) => c.id)).size !== cases.length) throw new Error('duplicate case ids');
+// --self-test-reject: inject one case with test date == birth date; the check below must then exit 1
+if (process.argv.includes('--self-test-reject')) add('self-test-reject', 'edge', '2020-05-05', null, {}, '2020-05-05');
 const outOfScope = cases.filter((c) => c.testDate <= c.birthDate);
 if (outOfScope.length > 0) {
   console.error(`out of scope: test date <= birth date (case ${outOfScope[0].id})`);

@@ -1,3 +1,4 @@
+import { ChartEmpty } from './ChartEmpty';
 import { C, Dot, MIN_WIDTH, Txt, frame, runs, useWidth } from './frame';
 import type { ChartPayloads } from '../engine/charts';
 import { pt } from '../i18n/pt';
@@ -14,7 +15,7 @@ export function ProfileChart({ payload, optional }: { payload: ChartPayloads | n
     <figure className="fig">
       <figcaption>{ptNew['chart.standard.title']}</figcaption>
       <div className="fig-body" ref={ref}>
-        {payload && <ProfileSvg payload={payload.standardResults} optional={optional} w={w} />}
+        {payload ? <ProfileSvg payload={payload.standardResults} optional={optional} w={w} /> : <ChartEmpty kind="standard" />}
       </div>
       <p className="legend"><i className="sw v" />{pt['QI.Verbal']} <i className="sw r" />{pt['QI.Realization']} <i className="sw o" />{ptNew['chart.standard.optional']}</p>
     </figure>

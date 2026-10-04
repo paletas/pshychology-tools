@@ -95,9 +95,7 @@ describe('App', () => {
 
     setRaw('Information', '');
     for (const name of ['verbal', 'realization', 'completeScale', 'verbalComprehension', 'perceptiveOrganization', 'processingVelocity']) {
-      expect(text(`index-sum-${name}`)).toBe('');
-      expect(text(`index-iq-${name}`)).toBe('');
-      expect(text(`index-pct-${name}`)).toBe('');
+      expect(screen.queryByTestId(`index-row-${name}`)).toBeNull();
     }
     expect(window.__wisc3Debug.snapshot().snapshot!.indicesShown).toBe(false);
     expect(window.__wisc3Debug.snapshot().charts).toBeNull();
@@ -116,7 +114,8 @@ describe('App', () => {
     setRaw('Information', 5);
     expect(text('scaled-Information')).toBe('');
     expect(text('sum-complete')).toBe('0');
-    expect(text('index-iq-verbal')).toBe('');
+    expect(screen.queryByTestId('index-row-verbal')).toBeNull();
+    expect(screen.getByTestId('results-empty').getAttribute('data-reason')).toBe('results.empty.age');
     expect(window.__wisc3Debug.snapshot().snapshot!.supported).toBe(false);
   });
 
@@ -237,7 +236,7 @@ describe('App', () => {
   it('shows the empty results state until all mandatory raws are in, and the glance strip after', async () => {
     await renderApp();
     expect(screen.getByTestId('results-empty')).toBeTruthy();
-    expect(document.getElementById('glance')!.children).toHaveLength(0);
+    expect(document.getElementById('glance')!.textContent!.match(/—/g)).toHaveLength(3);
     const age: [number, number, number] = [9, 3, 12];
     setAge(age);
     for (const [id, v] of Object.entries(midRaws(age))) setRaw(id, v);

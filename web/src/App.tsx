@@ -17,6 +17,7 @@ import { Layout } from './ui/Layout';
 import { LegacyLink } from './ui/LegacyLink';
 import { LookupTableVisualizer } from './ui/LookupTableVisualizer';
 import { SheetActions } from './ui/SheetActions';
+import { dateGuard, localToday, parseRaw, resultsReason } from './ui/guards/inputGuards';
 import { SubtestTable } from './ui/SubtestTable';
 import { ThemeToggle } from './ui/ThemeToggle';
 
@@ -37,7 +38,9 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
 
   const [testDate, setTestDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [raw, setRaw] = useState<Record<string, number | null>>({});
+  const [birthBad, setBirthBad] = useState(false);
+  const [testBad, setTestBad] = useState(false);
+  const [rawText, setRawText] = useState<Record<string, string>>({});
   const [ci, setCi] = useState<CiChoice>('Percentil95');
   const [showTable, setShowTable] = useState(false);
 
@@ -57,8 +60,26 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   }, [swUpdate]);
 
   const data = loaded?.data ?? null;
+  // REV-12: the guards sit in front of the engine; only parsed whole numbers >= 0 reach it.
+  const { raw, rawErrors } = useMemo(() => {
+    const raw: Record<string, number | null> = {};
+    const rawErrors: Record<string, string | null> = {};
+    for (const [id, text] of Object.entries(rawText)) {
+      const p = parseRaw(text);
+      raw[id] = p.value;
+      rawErrors[id] = p.error;
+    }
+    return { raw, rawErrors };
+  }, [rawText]);
+  const today = useMemo(() => localToday(), []);
+  const guard = useMemo(() => dateGuard({ birth: birthDate, test: testDate, birthBad, testBad, today }), [birthDate, testDate, birthBad, testBad, today]);
   const snapshot = useMemo(() => (data ? scoreCase(data, { testDate, birthDate, raw }) : null), [data, testDate, birthDate, raw]);
-  const charts = useMemo(() => (snapshot ? chartPayloads(snapshot, pt) : null), [snapshot]);
+  const reason = useMemo(
+    () => (data && snapshot ? resultsReason(guard.state, snapshot, rawErrors, data.tests.map((t) => ({ id: t.id, name: pt[`Test.${t.id}`], mandatory: t.mandatory }))) : null),
+    [data, snapshot, guard, rawErrors],
+  );
+  const shown = !!snapshot?.indicesShown && !reason;
+  const charts = useMemo(() => (snapshot && shown ? chartPayloads(snapshot, pt) : null), [snapshot, shown]);
   const derived = useMemo(() => chartsDerived(charts), [charts]);
   const optional = useMemo(() => Object.fromEntries((data?.tests ?? []).map((t) => [t.id, !t.mandatory])), [data]);
 
@@ -66,24 +87,28 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
     publishDebug({ snapshot, charts, chartsDerived: derived, dataVersion: data?.dataVersion ?? null, dataSha: loaded?.sha ?? null });
   }, [snapshot, charts, derived, data, loaded]);
 
-  const setDates = (t: string, b: string) => {
+  const setDates = (t: string, b: string, tBad = false, bBad = false) => {
     if (data) {
       // as in WISC3TestViewModel: when the age changes, a raw outside the new bounds is cleared
       const next = scoreCase(data, { testDate: t, birthDate: b, raw });
       if (!sameAge(next.age, snapshot?.age ?? null)) {
-        const kept: Record<string, number | null> = {};
-        for (const [id, v] of Object.entries(raw)) kept[id] = next.tests[id]?.outOfBounds ? null : v;
-        setRaw(kept);
+        const kept: Record<string, string> = {};
+        for (const [id, text] of Object.entries(rawText)) kept[id] = next.tests[id]?.outOfBounds ? '' : text;
+        setRawText(kept);
       }
     }
     setTestDate(t);
     setBirthDate(b);
+    setTestBad(tBad);
+    setBirthBad(bBad);
   };
 
   const startFresh = () => {
     setTestDate('');
     setBirthDate('');
-    setRaw({});
+    setTestBad(false);
+    setBirthBad(false);
+    setRawText({});
     const p = takePending();
     if (p) {
       setLoaded(p);
@@ -105,7 +130,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   const band = snapshot.bandId ? (data.bands.find((b) => b.id === snapshot.bandId) ?? null) : null;
 
   return (
-    <Layout dataVersion={data.dataVersion} glance={<GlanceStrip snapshot={snapshot} />} legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
+    <Layout dataVersion={data.dataVersion} glance={<GlanceStrip snapshot={snapshot} shown={shown} />} legacySlot={<LegacyLink />} themeSlot={<ThemeToggle />}>
       <div data-testid="app" data-ready="true">
         {swWaiting && <UpdateBanner onUpdate={() => swUpdate?.apply()} />}
         {dataPending && <DataUpdatedBanner />}
@@ -121,12 +146,13 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
             <DatesPanel
               testDate={testDate}
               birthDate={birthDate}
-              age={snapshot.age}
+              age={guard.age}
               band={band}
-              onTestDate={(v) => setDates(v, birthDate)}
-              onBirthDate={(v) => setDates(testDate, v)}
+              messages={guard.messages}
+              onTestDate={(v, bad) => setDates(v, birthDate, bad, birthBad)}
+              onBirthDate={(v, bad) => setDates(testDate, v, testBad, bad)}
             />
-            <SubtestTable data={data} snapshot={snapshot} raw={raw} onRaw={(id, v) => setRaw((r) => ({ ...r, [id]: v }))} />
+            <SubtestTable data={data} snapshot={snapshot} rawText={rawText} rawErrors={rawErrors} onRawText={(id, text) => setRawText((r) => ({ ...r, [id]: text }))} />
             <SheetActions onShowTable={() => setShowTable((s) => !s)} onPrint={() => window.print()} onStartFresh={startFresh} />
 
             {datesSet && (
@@ -139,7 +165,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
           </section>
 
           <section className="results" aria-labelledby="h-res">
-            <IndexTable snapshot={snapshot} ci={ci} onCi={setCi} />
+            <IndexTable snapshot={snapshot} reason={reason} ci={ci} onCi={setCi} />
           </section>
         </div>
 

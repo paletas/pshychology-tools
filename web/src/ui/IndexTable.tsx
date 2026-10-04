@@ -3,6 +3,8 @@ import { INDEX_NAMES } from '../engine/types';
 import type { IndexName, Snapshot } from '../engine/types';
 import { pt } from '../i18n/pt';
 import { ptNew } from '../i18n/pt-new';
+import { guardText } from './guards/inputGuards';
+import type { ResultsReason } from './guards/inputGuards';
 import { fmt } from './template';
 
 export type CiChoice = 'Percentil90' | 'Percentil95';
@@ -40,12 +42,14 @@ function Strip({ iq, ci }: { iq: number; ci: [number, number] | null }) {
 
 interface Props {
   snapshot: Snapshot;
+  /** Why the results are not shown (REV-12), or null when they are. */
+  reason: ResultsReason | null;
   ci: CiChoice;
   onCi: (v: CiChoice) => void;
 }
 
 /** "Resultados": the 90/95 switch, the six indices as strips, and the empty state. */
-export function IndexTable({ snapshot, ci, onCi }: Props) {
+export function IndexTable({ snapshot, reason, ci, onCi }: Props) {
   const level = ci === 'Percentil90' ? '90' : '95';
   return (
     <>
@@ -61,15 +65,17 @@ export function IndexTable({ snapshot, ci, onCi }: Props) {
         })}
       </div>
 
-      {!snapshot.indicesShown && <p className="empty-state" data-testid="results-empty">{ptNew['results.empty']}</p>}
+      {reason && (
+        <p className="empty-state" data-testid="results-empty" data-reason={reason.key} role="status">
+          {guardText(reason.key, reason.params)}
+        </p>
+      )}
 
-      {/* The rows stay in the document (empty) while the empty state shows, so readers always find the cells. */}
-      <div hidden={!snapshot.indicesShown}>
-        {snapshot.indicesShown && (
-          <div className="axis" aria-hidden="true">
-            {TICKS.map((v) => <span key={v} style={{ left: `${((v - LO) / (HI - LO)) * 100}%` }}>{v}</span>)}
-          </div>
-        )}
+      {!reason && (
+      <div>
+        <div className="axis" aria-hidden="true">
+          {TICKS.map((v) => <span key={v} style={{ left: `${((v - LO) / (HI - LO)) * 100}%` }}>{v}</span>)}
+        </div>
         {INDEX_NAMES.map((name) => {
           const row = snapshot.indices[name];
           const entry = row?.entry;
@@ -102,18 +108,18 @@ export function IndexTable({ snapshot, ci, onCi }: Props) {
         })}
         <p className="scale-note">{ptNew['results.scaleNote']}</p>
       </div>
+      )}
     </>
   );
 }
 
 /** The three headline indices for the compact strip shown below 1100 px. */
-export function GlanceStrip({ snapshot }: { snapshot: Snapshot }) {
-  if (!snapshot.indicesShown) return null;
+export function GlanceStrip({ snapshot, shown }: { snapshot: Snapshot; shown: boolean }) {
   return (
     <>
       {(['verbal', 'realization', 'completeScale'] as const).map((name) => {
         const entry = snapshot.indices[name]?.entry;
-        const iq = entry && entry !== 'unavailable' ? String(entry.iq) : '—';
+        const iq = shown && entry && entry !== 'unavailable' ? String(entry.iq) : '—';
         return (
           <div key={name} data-testid={`glance-${name}`}>
             <strong>{iq}</strong>

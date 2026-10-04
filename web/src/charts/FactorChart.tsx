@@ -1,3 +1,4 @@
+import { ChartEmpty } from './ChartEmpty';
 import { C, Dot, MIN_WIDTH, Txt, comma, frame, runs, useWidth } from './frame';
 import type { ChartsDerived, FactorKey } from './derived';
 import type { ChartPayloads } from '../engine/charts';
@@ -19,7 +20,7 @@ export function FactorChart({ payload, derived, optional }: { payload: ChartPayl
     <figure className="fig">
       <figcaption>{ptNew['chart.factorial.title']}</figcaption>
       <div className="fig-body" ref={ref}>
-        {payload && derived && <FactorSvg payload={payload.factorial} derived={derived} optional={optional} w={w} />}
+        {payload && derived ? <FactorSvg payload={payload.factorial} derived={derived} optional={optional} w={w} /> : <ChartEmpty kind="factorial" />}
       </div>
       <p className="legend"><i className="sw v" />{pt['TestsPatternResults.VerbalComprehension']} <i className="sw r" />{pt['TestsPatternResults.PerceptiveOrganization']} <i className="sw s3" />{pt['TestsPatternResults.ProcessingVelocity']} <i className="sw m" />{ptNew['chart.factorial.mean']}</p>
     </figure>
