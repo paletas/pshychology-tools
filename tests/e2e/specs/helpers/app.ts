@@ -4,6 +4,10 @@ import type { CaseInput } from '../../../../web/src/engine/types';
 import { expectedCells } from './format';
 import { refData } from './cases';
 import { scoreCase } from '../../../../web/src/engine/scoring';
+import { formatCi } from '../../../../web/src/engine/format';
+
+// [REV-13] exact expected texts that mean "blank" for an index field: '' (sum/iq/pct) and the blank CI formatCi(null) = ' - '. '—' (unavailable) is NOT blank.
+const BLANK_INDEX_TEXTS = new Set(['', formatCi(null)]);
 
 export async function waitReady(page: Page): Promise<void> {
   await expect(page.getByTestId('app')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
@@ -49,13 +53,17 @@ export function readCells(page: Page): Promise<Record<string, string>> {
 }
 
 /** Keys whose displayed text differs from the expected one (empty when everything matches). */
-export async function cellMismatches(page: Page, expected: Record<string, string>): Promise<string[]> {
-  const actual = await readCells(page);
+export function diffCells(actual: Record<string, string>, expected: Record<string, string>): string[] {
+  const resultsEmpty = actual['results-empty'] !== undefined;
   return Object.entries(expected)
-    // [REV-12] index rows are not rendered while results-empty explains why: absent counts as blank
-    .filter(([k, v]) => !(actual[k] === undefined && k.startsWith('index-') && v.trim() === ''))
+    // [REV-12/13] index rows are not rendered while results-empty shows: an absent index-* field equals an exact expected blank only then
+    .filter(([k, v]) => !(resultsEmpty && actual[k] === undefined && k.startsWith('index-') && BLANK_INDEX_TEXTS.has(v)))
     .filter(([k, v]) => actual[k] === undefined || actual[k].trim() !== v.trim())
     .map(([k, v]) => `${k}: expected "${v}", got ${actual[k] === undefined ? 'missing' : `"${actual[k]}"`}`);
+}
+
+export async function cellMismatches(page: Page, expected: Record<string, string>): Promise<string[]> {
+  return diffCells(await readCells(page), expected);
 }
 
 /** Asserts (with retry) that the page shows exactly what scoreCase predicts for the input, using the given data (default: data/). */
