@@ -39,6 +39,7 @@ public sealed class CorrectionsFile
 }
 
 // Hand-written, user-approved corrections (data/corrections/wisc3-pt.json, schema v2): scaled cells and index fields.
+// Since REV-11 src/ already contains them; the "old" values are checked against golden-original (OriginalTables).
 public static class CorrectionsLoader
 {
     public static readonly string[] IndexFields = { "iq", "percentile", "ci95Lower", "ci95Upper" };
@@ -75,15 +76,15 @@ public static class CorrectionsLoader
         return null;
     }
 
-    // Rows of a test in a band with the scaled corrections applied (a gap row takes the value of equivalentRaw's columns).
-    public static List<int?[]> PatchedRows(BandData band, string testId)
+    // Rows of a test in a band: the ORIGINAL rows (golden-original) with the scaled corrections applied (a gap row takes the value of equivalentRaw's columns).
+    public static List<int?[]> PatchedRows(string bandId, string testId)
     {
-        var tb = band.Tests[testId];
+        var tb = OriginalTables.Test(bandId, testId);
         var rows = new List<int?[]>();
         foreach (var oldRow in tb.Rows)
         {
             var row = (int?[])oldRow.Clone();
-            var hit = FindScaled(band.Id, testId, row[0]!.Value);
+            var hit = FindScaled(bandId, testId, row[0]!.Value);
             if (hit != null)
             {
                 var (c, cell) = hit.Value;
@@ -141,37 +142,37 @@ public static class CorrectionsLoader
     public static List<string> Validate()
     {
         var errors = new List<string>();
-        var st = Catalog.Standardizer;
         var ids = new HashSet<string>();
         foreach (var c in All) if (!ids.Add(c.Id)) errors.Add($"{c.Id}: duplicate id");
 
-        // scaled corrections: old value equals the reflected C# value; C1 'throws' matches the recorded gap
+        // scaled corrections: the old value equals the ORIGINAL table (golden-original; C1 'throws' = the recorded gap) and the live (fixed) src/ gives the new value
         foreach (var c in Scaled)
         {
             var band = Catalog.Bands.SingleOrDefault(b => b.Id == c.Band);
-            if (band == null || c.Test == null || !band.Tests.TryGetValue(c.Test, out var tb)) { errors.Add($"{c.Id}: unknown band/test {c.Band}/{c.Test}"); continue; }
-            var age = new Silvestre.Psychology.Tools.WISC3.Age(band.Age[0], band.Age[1], band.Age[2]);
-            var type = Enum.Parse<Silvestre.Psychology.Tools.WISC3.TestTypeEnum>(c.Test);
+            if (band == null || c.Test == null || !band.Tests.TryGetValue(c.Test, out var live)) { errors.Add($"{c.Id}: unknown band/test {c.Band}/{c.Test}"); continue; }
+            var tb = OriginalTables.Test(c.Band!, c.Test);
             foreach (var cell in c.Cells)
             {
-                bool throws;
-                try { st.Standerdization(type, age, (short)cell.Raw); throws = false; } catch (ArgumentOutOfRangeException) { throws = true; }
                 var row = tb.Rows.FirstOrDefault(r => r[0] == cell.Raw);
                 if (row == null) { errors.Add($"{c.Id}: raw {cell.Raw} outside {band.Id}/{c.Test} bounds"); continue; }
+                bool throws = Catalog.IsGap(row);
                 if (cell.OldThrows)
                 {
-                    if (!throws) errors.Add($"{c.Id}: old code does not throw for {c.Band} {c.Test} raw {cell.Raw}");
+                    if (!throws) errors.Add($"{c.Id}: original code does not throw for {c.Band} {c.Test} raw {cell.Raw}");
                     var eq = tb.Rows.FirstOrDefault(r => r[0] == c.EquivalentRaw);
                     var eqVals = eq?.Skip(1).Where(v => v != null).Select(v => v!.Value).Distinct().ToList();
                     if (eqVals == null || eqVals.Count != 1 || eqVals[0] != cell.NewInt) errors.Add($"{c.Id}: equivalentRaw {c.EquivalentRaw} does not map to scaled {cell.NewInt}");
                 }
                 else
                 {
-                    if (throws) errors.Add($"{c.Id}: old code throws for {c.Band} {c.Test} raw {cell.Raw} but old is not 'throws'");
+                    if (throws) errors.Add($"{c.Id}: original code throws for {c.Band} {c.Test} raw {cell.Raw} but old is not 'throws'");
                     var vals = row.Skip(1).Where(v => v != null).Select(v => v!.Value).Distinct().ToList();
-                    if (vals.Count != 1 || vals[0] != cell.OldInt) errors.Add($"{c.Id}: {c.Band} {c.Test} raw {cell.Raw}: old code gives [{string.Join(",", vals)}], file says {cell.OldInt}");
+                    if (vals.Count != 1 || vals[0] != cell.OldInt) errors.Add($"{c.Id}: {c.Band} {c.Test} raw {cell.Raw}: original code gives [{string.Join(",", vals)}], file says {cell.OldInt}");
                     if (cell.NewInt == cell.OldInt) errors.Add($"{c.Id}: new equals old for raw {cell.Raw}");
                 }
+                var liveRow = live.Rows.FirstOrDefault(r => r[0] == cell.Raw);
+                var liveVals = liveRow?.Skip(1).Where(v => v != null).Select(v => v!.Value).Distinct().ToList();
+                if (liveVals == null || liveVals.Count != 1 || liveVals[0] != cell.NewInt) errors.Add($"{c.Id}: {c.Band} {c.Test} raw {cell.Raw}: live src/ gives [{string.Join(",", liveVals ?? new List<int>())}], file says {cell.NewInt}");
             }
         }
 
@@ -179,7 +180,7 @@ public static class CorrectionsLoader
         foreach (var band in Catalog.Bands)
             foreach (var (testId, tb) in band.Tests)
             {
-                var rows = PatchedRows(band, testId);
+                var rows = PatchedRows(band.Id, testId);
                 int? prev = null;
                 int expected = tb.Min;
                 foreach (var row in rows)
@@ -201,11 +202,11 @@ public static class CorrectionsLoader
             if (c.Field == null || !IndexFields.Contains(c.Field)) { errors.Add($"{c.Id}: unknown field {c.Field}"); continue; }
             foreach (var cell in c.Cells)
             {
-                if (!idx.Keys.Contains((short)cell.Sum)) { errors.Add($"{c.Id}: sum {cell.Sum} is not a key of {c.Index}"); continue; }
-                var r = idx.Calculate((short)cell.Sum)!;
+                if (!idx.Keys.Contains((short)cell.Sum) || !OriginalTables.Index(c.Index, cell.Sum).InTable) { errors.Add($"{c.Id}: sum {cell.Sum} is not a key of {c.Index}"); continue; }
+                var r = OriginalTables.IndexResult(c.Index, cell.Sum);
                 var oldText = IndexFieldOld(r, c.Field);
                 var fileOld = c.Field == "percentile" ? cell.Old.GetDecimal().ToString(CultureInfo.InvariantCulture) : cell.Old.GetInt32().ToString(CultureInfo.InvariantCulture);
-                if (oldText != fileOld) errors.Add($"{c.Id}: {c.Index}/{cell.Sum}.{c.Field} old code gives {oldText}, file says {fileOld}");
+                if (oldText != fileOld) errors.Add($"{c.Id}: {c.Index}/{cell.Sum}.{c.Field} original code gives {oldText}, file says {fileOld}");
                 if (oldText == CellNewText(c, cell)) errors.Add($"{c.Id}: new equals old for {c.Index}/{cell.Sum}");
                 var p = PatchIndex(c.Index, (short)cell.Sum, r, out _)!;
                 if (!(p.ConfidenceInterval95.BottomBoundary <= p.ConfidenceInterval90.BottomBoundary && p.ConfidenceInterval95.TopBoundary >= p.ConfidenceInterval90.TopBoundary))
@@ -214,6 +215,11 @@ public static class CorrectionsLoader
                     errors.Add($"D8: {c.Index}/{cell.Sum}: old CI95 lower {r.ConfidenceInterval95.BottomBoundary} != old CI90 lower {r.ConfidenceInterval90.BottomBoundary}");
             }
         }
+
+        // the live (fixed) src/ tables equal the original tables with the corrections applied
+        var (fixedScaled, fixedIndex) = OriginalTables.FixedVsData();
+        foreach (var x in fixedScaled) errors.Add("live src/ scaled row differs from the corrected original: " + x);
+        foreach (var x in fixedIndex) errors.Add("live src/ index entry differs from the corrected original: " + x);
         return errors;
     }
 }

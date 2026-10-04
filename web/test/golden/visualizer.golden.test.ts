@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { lookupGrid } from '../../src/engine/bands';
 import type { GoldenCorrection } from '../shared/fixed-model';
-import { loadData, loadGolden } from '../shared/load';
+import { loadData, loadGoldenOriginal } from '../shared/load';
 
 const data = loadData();
-const golden = loadGolden<{ bands: any[] }>('subtests.json');
-const corrections = loadGolden<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'scaled');
+const golden = loadGoldenOriginal<{ bands: any[] }>('subtests.json');
+const corrections = loadGoldenOriginal<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'scaled');
 
-describe('lookup-table visualizer grid', () => {
+describe('lookup-table visualizer grid (golden-original)', () => {
   it('equals the raw ranges derived from the golden rows (scaled corrections applied)', () => {
     let cells = 0;
     for (const band of golden.bands) {

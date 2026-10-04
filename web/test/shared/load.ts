@@ -9,6 +9,8 @@ import type { Age, RefData } from '../../src/engine/types';
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '../../..');
 export const goldenDir = resolve(repoRoot, 'tools/Wisc3.Oracle/golden');
+/** Frozen pre-fix golden of the old tables (REV-11): the original values the approved corrections were derived from. */
+export const goldenOriginalDir = resolve(repoRoot, 'tools/Wisc3.Oracle/golden-original');
 export const dataDir = resolve(repoRoot, 'data/wisc3-pt');
 
 export function loadData(): RefData {
@@ -17,6 +19,10 @@ export function loadData(): RefData {
 
 export function loadGolden<T = any>(name: string): T {
   return JSON.parse(readFileSync(resolve(goldenDir, name), 'utf8')) as T;
+}
+
+export function loadGoldenOriginal<T = any>(name: string): T {
+  return JSON.parse(readFileSync(resolve(goldenOriginalDir, name), 'utf8')) as T;
 }
 
 const pad = (n: number, w = 2) => String(n).padStart(w, '0');

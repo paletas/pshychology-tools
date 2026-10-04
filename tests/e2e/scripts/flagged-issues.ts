@@ -162,7 +162,7 @@ if (openDisc.length === 0) {
 
 // resolved
 md.push('## Resolved', '');
-md.push('Corrected in the new app only (data/corrections/wisc3-pt.json, applied to the emitted data); the old app is unchanged. The full cell list is in docs/wisc3/corrections-report.md.', '');
+md.push('Corrected in the new app (data/corrections/wisc3-pt.json, applied to the emitted data) and, since REV-11, also in the table files of the old app (same cells and values; its logic bugs are unchanged). The full cell list is in docs/wisc3/corrections-report.md.', '');
 const cellsText = (c: any): string => {
   const key = c.kind === 'scaled' ? 'raw' : 'sum';
   const one = (x: any) => `${key} ${x[key]}: ${x.old} -> ${x.new}`;

@@ -1,4 +1,4 @@
-// New Portuguese strings introduced by the redesign (REV-9/REV-10). Provisional: pending the user's approval,
+// New Portuguese strings introduced by the redesign (REV-9/REV-10). Approved by the user 2026-10-04,
 // listed in new-strings.md. Existing texts stay in pt.ts (verbatim from the resx); nothing here duplicates them.
 export const ptNew: Record<string, string> = {
   "brand": "Calculadora WISC-III",

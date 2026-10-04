@@ -9,7 +9,7 @@ import { INDEX_NAMES } from '../../src/engine/types';
 import type { IndexName } from '../../src/engine/types';
 import { pt } from '../../src/i18n/pt';
 import { chartsToMaps, fixedModel } from '../shared/fixed-model';
-import type { GoldenCorrection, KeySets } from '../shared/fixed-model';
+import type { KeySets } from '../shared/fixed-model';
 import { goldenDir, loadData, loadGolden } from '../shared/load';
 
 const data = loadData();
@@ -24,19 +24,18 @@ describe('scenarios vs fixed model', () => {
     const keySets = Object.fromEntries(
       INDEX_NAMES.map((n) => [n, new Set<number>(idx[n].filter((r) => r.inTable).map((r) => r.sum))]),
     ) as KeySets;
-    const corrections = loadGolden<GoldenCorrection[]>('corrections.json');
 
     const tagCounts: Record<string, number> = {};
-    const correctionHits: Record<string, number> = Object.fromEntries(CORRECTION_IDS.map((id) => [id, 0]));
+    const correctionsTouched: Record<string, number> = Object.fromEntries(CORRECTION_IDS.map((id) => [id, 0]));
     const failures: string[] = [];
     const ageKey = (a: number[]) => a[0] * 10000 + a[1] * 100 + a[2];
     const highBad: string[] = [];
     const lowBad: string[] = [];
     let untaggedAbove17y3m = 0;
     for (const s of scenarios) {
-      const { expected, tags, correctionIds } = fixedModel(s, { ...s.old, correctionsHit: s.correctionsHit, oldCorrected: s.oldCorrected }, keySets, corrections);
+      const { expected, tags } = fixedModel(s, s.old, keySets);
       for (const t of tags) tagCounts[t] = (tagCounts[t] ?? 0) + 1;
-      for (const id of correctionIds) correctionHits[id] = (correctionHits[id] ?? 0) + 1;
+      for (const id of (s.correctionsTouched ?? []) as string[]) correctionsTouched[id] = (correctionsTouched[id] ?? 0) + 1;
       const k = s.old.age ? ageKey(s.old.age) : null;
       if (tags.includes('gate-high-throw') && !(k !== null && k >= ageKey([17, 0, 0]) && k <= ageKey([17, 2, 30]))) highBad.push(s.id);
       if (tags.includes('gate-low') && !(k !== null && k >= ageKey([5, 10, 0]) && k <= ageKey([5, 11, 30]))) lowBad.push(s.id);
@@ -47,7 +46,7 @@ describe('scenarios vs fixed model', () => {
       const okSnap = isDeepStrictEqual(actual, expSnap);
       const okCharts = isDeepStrictEqual(chartsToMaps(actCharts), chartsToMaps(expCharts));
       let okCls = true;
-      const base = tags.includes('manual-correction') ? s.oldCorrected : s.old;
+      const base = s.old;
       if (okSnap && base?.indices && actual.indicesShown) {
         for (const n of INDEX_NAMES as readonly IndexName[]) {
           const e = actual.indices[n]?.entry;
@@ -66,13 +65,13 @@ describe('scenarios vs fixed model', () => {
     }
     console.log(`scenarios.golden count=${scenarios.length} tags=${JSON.stringify(tagCounts)} failures=${failures.length}`);
     expect(failures).toEqual([]);
-    console.log(`correctionHits ${CORRECTION_IDS.map((id) => `${id}=${correctionHits[id]}`).join(' ')}`);
-    for (const id of CORRECTION_IDS) expect(correctionHits[id], `correction ${id} hit`).toBeGreaterThanOrEqual(1);
+    console.log(`correctionsTouched ${CORRECTION_IDS.map((id) => `${id}=${correctionsTouched[id]}`).join(' ')}`);
+    for (const id of CORRECTION_IDS) expect(correctionsTouched[id], `correction ${id} touched`).toBeGreaterThanOrEqual(1);
     console.log(`gateHighAgeRange=17y0m0d..17y2m30d gateLowAgeRange=5y10m0d..5y11m30d untaggedAbove17y3m=${untaggedAbove17y3m}`);
     expect(highBad).toEqual([]);
     expect(lowBad).toEqual([]);
     expect(untaggedAbove17y3m).toBeGreaterThanOrEqual(1);
     expect(scenarios.length).toBeGreaterThanOrEqual(10000);
-    expect(tagCounts['manual-correction'] ?? 0).toBeGreaterThanOrEqual(1);
+    expect(tagCounts['manual-correction'] ?? 0).toBe(0);
   });
 });

@@ -123,7 +123,7 @@ add('edge-birth-leap-day', 'edge-birth-leap-day', '2023-02-28', null, rawsFor(MI
   raw.SymbolSearch = null;
   add('edge-symbolsearch-omitted', 'edge-symbolsearch-omitted', D0, MID_AGE, raw);
 }
-add('edge-manual-correction', 'edge-manual-correction', D0, [11, 8, 15], { ...rawsFor('11y06m'), ImageDisposition: 38 });
+add('edge-corr-C1', 'edge-corr-C1', D0, [11, 8, 15], { ...rawsFor('11y06m'), ImageDisposition: 38 });
 {
   // first band (in order) with a Coding raw whose scaled value is 1; Symbol Search omitted
   let found: { band: string; raw: number } | null = null;

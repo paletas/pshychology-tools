@@ -5,7 +5,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 import { INDEX_NAMES } from '../../../../web/src/engine/types';
 import type { Age, CaseInput } from '../../../../web/src/engine/types';
 import { fixedModel } from '../../../../web/test/shared/fixed-model';
-import type { GoldenCorrection, KeySets, OldResult, Tag } from '../../../../web/test/shared/fixed-model';
+import type { KeySets, OldResult, Tag } from '../../../../web/test/shared/fixed-model';
 import { loadGolden } from '../../../../web/test/shared/load';
 import type { CaseRecord } from '../../scripts/generate-cases';
 import { blockAds } from '../helpers/adblock';
@@ -29,8 +29,7 @@ if (!existsSync(casesFile) || !existsSync(predFile)) throw new Error('run script
 interface Prediction {
   id: string;
   old: OldResult;
-  correctionsHit?: string[];
-  oldCorrected?: OldResult;
+  correctionsTouched?: string[];
   oldConsole?: PredictedOldConsole[];
 }
 const cases: CaseRecord[] = JSON.parse(readFileSync(casesFile, 'utf8'));
@@ -38,7 +37,6 @@ const predictions = new Map<string, Prediction>((JSON.parse(readFileSync(predFil
 
 const idx = loadGolden<Record<string, { sum: number; inTable: boolean }[]>>('indices.json');
 const keySets = Object.fromEntries(INDEX_NAMES.map((n) => [n, new Set<number>(idx[n].filter((r) => r.inTable).map((r) => r.sum))])) as KeySets;
-const corrections = loadGolden<GoldenCorrection[]>('corrections.json');
 
 const casesDir = join(reportsDir, 'compare/cases');
 const chartsDir = join(reportsDir, 'screens/charts');
@@ -111,9 +109,9 @@ for (const c of cases) {
     try {
       if (!pred) throw new Error('no prediction for case');
       const input: CaseInput = { testDate: c.testDate, birthDate: c.birthDate, raw: c.raw };
-      const model = fixedModel(input, { ...pred.old, correctionsHit: pred.correctionsHit, oldCorrected: pred.oldCorrected }, keySets, corrections);
+      const model = fixedModel(input, pred.old, keySets);
       tags = model.tags;
-      record.correctionIds = model.correctionIds;
+      record.correctionsTouched = pred.correctionsTouched ?? [];
       const expOld = expectedOld(pred.old);
       const expNew = expectedNew(model.expected);
       record.age = pred.old.age as Age | null;
@@ -160,7 +158,7 @@ for (const c of cases) {
       const oldVsPred: FieldDiff[] = diff(oldRead, expOld);
       const newVsFixed: FieldDiff[] = diff(newRead, expNew);
       const oldVsNew: FieldDiff[] = diff(oldRead, newRead);
-      const notCovered = uncovered(oldVsNew, tags, expNew, model.correctionIds, corrections);
+      const notCovered = uncovered(oldVsNew, tags, expNew);
       const blankOld = oldIndicesShown && oldInk.some((v) => v < MIN_INK);
       const blankNew = newIndicesShown ? newMarks.some((v) => !(v > 0)) : newEmpty !== 3 || newMarks.some((v) => v > 0);
 

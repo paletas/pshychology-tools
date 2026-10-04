@@ -54,7 +54,8 @@ public sealed record OldResult(
     Dictionary<string, OldTest>? Tests, Dictionary<string, int>? Sums,
     bool IndicesShown, Dictionary<string, OldIndex?>? Indices, JsonNode? Charts,
     string? ThrowStage = null, ThrowAt? ThrowAt = null, string? BandId = null);
-public sealed record ScenarioResult(string Id, OldResult Old, List<string> CorrectionsHit, OldResult? OldCorrected = null, List<OldConsoleRec>? OldConsole = null);
+// CorrectionsTouched: ids of the approved corrections whose cell the case lands on (a raw on a corrected scaled cell, or a shown index with a corrected sum).
+public sealed record ScenarioResult(string Id, OldResult Old, List<string> CorrectionsTouched, List<OldConsoleRec>? OldConsole = null);
 
 public sealed class OutOfScopeException(string message) : Exception(message);
 
@@ -76,8 +77,7 @@ public static class ScenarioDriver
         if (s.TestDate != null && s.BirthDate != null && Catalog.ParseIso(s.TestDate) <= Catalog.ParseIso(s.BirthDate))
             throw new OutOfScopeException($"out of scope: test date <= birth date (case {s.Id})");
         var old = RunCore(s);
-        var (corrected, hits) = CorrectedModel.Compute(s, old);
-        return new ScenarioResult(s.Id, old, hits, hits.Count > 0 ? corrected : null, OldConsole.Predict(s, old));
+        return new ScenarioResult(s.Id, old, CorrectionsTouched.Compute(s, old), OldConsole.Predict(s, old));
     }
 
     internal static OldResult RunCore(Scenario s)

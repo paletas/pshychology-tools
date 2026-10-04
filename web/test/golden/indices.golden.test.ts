@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { lookupIndex } from '../../src/engine/scoring';
 import { INDEX_NAMES } from '../../src/engine/types';
 import type { GoldenCorrection } from '../shared/fixed-model';
-import { loadData, loadGolden } from '../shared/load';
+import { loadData, loadGoldenOriginal } from '../shared/load';
 
 const data = loadData();
-const golden = loadGolden<Record<string, any[]>>('indices.json');
-const corrections = loadGolden<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'index');
+const golden = loadGoldenOriginal<Record<string, any[]>>('indices.json');
+const corrections = loadGoldenOriginal<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'index');
 
-describe('indices vs golden', () => {
+describe('indices vs golden-original', () => {
   it('inTable rows equal golden (corrected cells equal golden corrected), non-key rows unavailable', () => {
     let inTable = 0;
     let missing = 0;

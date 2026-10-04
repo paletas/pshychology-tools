@@ -1,5 +1,5 @@
 import { chartsToMaps } from '../../../../web/test/shared/fixed-model';
-import type { GoldenCorrection, Tag } from '../../../../web/test/shared/fixed-model';
+import type { Tag } from '../../../../web/test/shared/fixed-model';
 import type { IndexName } from '../../../../web/src/engine/types';
 import { INDEX_NAMES } from '../../../../web/src/engine/types';
 import type { Reading } from './reading';
@@ -64,7 +64,7 @@ const QI_CHART_POS: Record<string, [string, number]> = {
   processingVelocity: ['Indices', 2],
 };
 
-/** Fields an index-level cover (index-missing-key or an index correction) may change: that index's IQ, classification, percentile, CI fields and its QI-chart entry. */
+/** Fields an index-level cover (index-missing-key) may change: that index's IQ, classification, percentile, CI fields and its QI-chart entry. */
 function indexCovers(field: string, names: IndexName[]): boolean {
   return names.some((n) => {
     if (/^index\.[A-Za-z]+\.(iq|cls|pct|ci90|ci95)$/.test(field) && field.startsWith(`index.${n}.`)) return true;
@@ -74,22 +74,15 @@ function indexCovers(field: string, names: IndexName[]): boolean {
 }
 
 /**
- * Old-vs-new diff fields not covered by the case's tags.
- * manual-correction: a scaled id (kind "scaled") covers the whole case; an index id covers only that index row and its QI-chart entry.
+ * Old-vs-new diff fields not covered by the case's tags (REV-11: the old app holds the approved table corrections, so there is no manual-correction cover).
  */
 export function uncovered(
   diffs: FieldDiff[],
   tags: Tag[],
   expectedNew: Reading,
-  correctionIds: string[] = [],
-  corrections: GoldenCorrection[] = [],
 ): FieldDiff[] {
   if (tags.some((t) => t === 'gate-low' || t === 'gate-high-throw')) return [];
-  const kindOf = (id: string) => corrections.find((c) => c.id === id)?.kind;
-  if (tags.includes('manual-correction') && correctionIds.some((id) => kindOf(id) === 'scaled')) return [];
   const covered: IndexName[] = [];
   if (tags.includes('index-missing-key')) covered.push(...INDEX_NAMES.filter((n) => expectedNew.indices[n].iq === '—'));
-  if (tags.includes('manual-correction'))
-    for (const id of correctionIds) for (const c of corrections) if (c.id === id && c.kind === 'index') covered.push(c.index as IndexName);
   return diffs.filter((d) => !indexCovers(d.field, covered));
 }

@@ -1,16 +1,16 @@
-// Builds reports/compare-report.{json,md} from reports/compare/cases/*.json. Exit 1 on any regression/mismatch/harness failure/untagged diff/ad response, unclassified or missing old console error, new-app console error, or a tag with 0 hits.
+// Builds reports/compare-report.{json,md} from reports/compare/cases/*.json. exit 1 on any regression/mismatch/harness failure/untagged diff/ad response, unclassified or missing old console error, new-app console error, a tag with 0 hits, a correction id never touched, a manual-correction tag (REV-11: must be 0), or a raw-throw / visualizer-raw-throw (the fixed old tables have no gap).
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { e2eDir, repoRoot, reportsDir } from '../specs/helpers/paths';
 
-const TAGS = ['gate-low', 'gate-high-throw', 'index-missing-key', 'manual-correction'] as const;
+const TAGS = ['gate-low', 'gate-high-throw', 'index-missing-key'] as const;
 
 interface CaseFile {
   id: string;
   kind: string;
   age?: number[] | null;
   tags: string[];
-  correctionIds?: string[];
+  correctionsTouched?: string[];
   verdict: string;
   error?: string;
   uncovered?: unknown[];
@@ -29,7 +29,8 @@ const cases: CaseFile[] = files.map((f) => JSON.parse(readFileSync(join(dir, f),
 const count = (v: string) => cases.filter((c) => c.verdict === v).length;
 const tagHits = Object.fromEntries(TAGS.map((t) => [t, cases.filter((c) => c.tags?.includes(t)).length])) as Record<(typeof TAGS)[number], number>;
 const CORRECTION_IDS = ['C1', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'] as const;
-const correctionHits = Object.fromEntries(CORRECTION_IDS.map((id) => [id, cases.filter((c) => c.correctionIds?.includes(id)).length])) as Record<(typeof CORRECTION_IDS)[number], number>;
+const manualCorrection = cases.filter((c) => c.tags?.includes('manual-correction')).length; // REV-11: the tag no longer exists, must stay 0
+const correctionsTouched = Object.fromEntries(CORRECTION_IDS.map((id) => [id, cases.filter((c) => c.correctionsTouched?.includes(id)).length])) as Record<(typeof CORRECTION_IDS)[number], number>;
 const OLD_KINDS = ['age-throw', 'raw-throw', 'visualizer-raw-throw', 'visualizer-index-throw'] as const;
 const casesOfKind = (k: string) => cases.filter((c) => c.oldConsole?.observed.includes(k));
 const oldConsoleKinds = Object.fromEntries(OLD_KINDS.map((k) => [k, casesOfKind(k).length])) as Record<(typeof OLD_KINDS)[number], number>;
@@ -48,7 +49,8 @@ const summary = {
     new: cases.filter((c) => c.blankCharts?.new).length,
   },
   tagHits,
-  correctionHits,
+  manualCorrection,
+  correctionsTouched,
   oldConsoleKinds,
   unclassifiedOldConsole: cases.reduce((n, c) => n + (c.oldConsole?.unclassified.length ?? 0), 0),
   oldConsoleMissing: cases.filter((c) => c.oldConsole?.predicted.some((k) => !c.oldConsole!.observed.includes(k))).length,
@@ -71,7 +73,6 @@ const catalogue: Record<(typeof TAGS)[number], string> = {
     'The day-count age is not strictly supported, and the old prediction has throws:true, throwStage:"age" (exactly the ages 17y0m0d..17y2m30d, where the old gate leaks and the band lookup throws). Old app: throws at date entry (age-throw console exception). New app: blocked. Ages from 17y3m0d up are blocked by both apps and get no tag.',
   'index-missing-key':
     'The age is strictly supported, indices are shown, and an index sum is not in its golden key set. Old app: the max-key entry. New app: that index row shows unavailable (IQ, percentile and CI show the dash, no classification arrow, null slot in the QI chart).',
-  'manual-correction': `The oracle scenario output has a non-empty correctionsHit: a raw lands on a corrected scaled cell (C1, D1-D3), or a shown index has a sum with a corrected cell (D4-D8). Old app: the old table values (C1: band 11y06m, ImageDisposition raw 38 throws, raw-throw console exception). New app: the corrected values. Scaled ids cover the whole case; index ids cover that index row and its QI-chart entry. The case record lists the ids. Corrections (9 ids, only these cells change): ${idList}.`,
 };
 
 const age = (c: CaseFile) => (c.age ? `${c.age[0]}y${c.age[1]}m${c.age[2]}d` : 'n/a');
@@ -88,8 +89,8 @@ md.push('## Old-app console errors (predicted by the oracle; old-app bugs, not i
 md.push('The oracle predicts, per case, which console exceptions the old app logs; presence is compared in both directions. An unclassified record is a regression, a predicted kind that is not observed is an old-model-mismatch. The new app has zero tolerance.', '');
 const KIND_CAUSE: Record<(typeof OLD_KINDS)[number], string> = {
   'age-throw': 'Setting SubjectAge throws "Age provided is outside of supported range" (LookupStandardizer.cs:66), ages 17y0m0d..17y2m30d.',
-  'raw-throw': 'Setting a raw result throws "is outside of the supported values" (C1: band 11y06m, ImageDisposition raw 38, a gap in the old table).',
-  'visualizer-raw-throw': 'The lookup visualizer enumerates every raw of every test and hits the gap at band 11y06m, ImageDisposition raw 38 (WISC3LookupTableVisualizer.razor:83-127).',
+  'raw-throw': 'Setting a raw result throws "is outside of the supported values". Not expected any more: the only gap (C1, band 11y06m, ImageDisposition raw 38) was fixed in the old tables (REV-11).',
+  'visualizer-raw-throw': 'The lookup visualizer enumerates every raw of every test and hits a gap in a table. Not expected any more: the gap at band 11y06m, ImageDisposition raw 38 was fixed (REV-11).',
   'visualizer-index-throw': 'The lookup visualizer indexes its scaled array out of range (WISC3LookupTableVisualizer.razor:109-121).',
 };
 md.push('| Kind | Cause | Cases | Case ids |', '|---|---|---|---|');
@@ -97,13 +98,14 @@ for (const k of OLD_KINDS) md.push(`| ${k} | ${KIND_CAUSE[k]} | ${oldConsoleKind
 md.push('');
 md.push('## Tag catalogue', '', '| Tag | Definition | Hits |', '|---|---|---|');
 for (const t of TAGS) md.push(`| ${t} | ${catalogue[t].replace(/\|/g, '/')} | ${tagHits[t]} |`);
-md.push('', '## Correction hits', '', '| Id | Cases |', '|---|---|');
-for (const id of CORRECTION_IDS) md.push(`| ${id} | ${correctionHits[id]} |`);
+md.push('', `manual-correction tag hits: ${manualCorrection} (REV-11: the old app already shows the corrected table cells, so old and new agree on them and there is no tag).`);
+md.push('', '## Corrections touched', '', 'Cases whose input lands on a corrected cell (a raw on a corrected scaled cell, or a shown index with a corrected sum). Old and new apps must show the same values there.', '', '| Id | Cases |', '|---|---|');
+for (const id of CORRECTION_IDS) md.push(`| ${id} | ${correctionsTouched[id]} |`);
 md.push('', '## Expected-diff cases', '');
 const expectedDiffs = cases.filter((c) => c.verdict === 'expected-diff');
 if (expectedDiffs.length === 0) md.push('None.', '');
 for (const c of expectedDiffs) {
-  md.push(`### ${c.id} (age ${age(c)}; tags: ${c.tags.join(', ')}${c.correctionIds?.length ? `; ids: ${c.correctionIds.join(', ')}` : ''})`, '');
+  md.push(`### ${c.id} (age ${age(c)}; tags: ${c.tags.join(', ')}${c.correctionsTouched?.length ? `; touched: ${c.correctionsTouched.join(', ')}` : ''})`, '');
   for (const d of c.oldVsNew ?? []) md.push(`- ${d.field}: ${d.a} -> ${d.b}`);
   md.push('');
 }
@@ -119,9 +121,12 @@ writeFileSync(join(reportsDir, 'compare-report.md'), md.join('\n'));
 const bad =
   summary.regression + summary.oldModelMismatch + summary.harnessFailure + summary.untaggedDiffs + summary.adResponses + summary.unclassifiedOldConsole + summary.oldConsoleMissing + summary.newConsoleErrors > 0 ||
   TAGS.some((t) => tagHits[t] === 0) ||
-  CORRECTION_IDS.some((id) => correctionHits[id] === 0) ||
+  CORRECTION_IDS.some((id) => correctionsTouched[id] === 0) ||
+  manualCorrection > 0 ||
+  oldConsoleKinds['raw-throw'] > 0 ||
+  oldConsoleKinds['visualizer-raw-throw'] > 0 ||
   summary.total === 0;
 console.log(
-  `compare: total=${summary.total} pass=${summary.pass} expectedDiff=${summary.expectedDiff} regression=${summary.regression} oldModelMismatch=${summary.oldModelMismatch} harnessFailure=${summary.harnessFailure} untaggedDiffs=${summary.untaggedDiffs} adResponses=${summary.adResponses} unclassifiedOldConsole=${summary.unclassifiedOldConsole} oldConsoleMissing=${summary.oldConsoleMissing} newConsoleErrors=${summary.newConsoleErrors} oldConsoleKinds=${JSON.stringify(oldConsoleKinds)} (${e2eDir})`,
+  `compare: total=${summary.total} pass=${summary.pass} expectedDiff=${summary.expectedDiff} regression=${summary.regression} oldModelMismatch=${summary.oldModelMismatch} harnessFailure=${summary.harnessFailure} untaggedDiffs=${summary.untaggedDiffs} adResponses=${summary.adResponses} unclassifiedOldConsole=${summary.unclassifiedOldConsole} oldConsoleMissing=${summary.oldConsoleMissing} newConsoleErrors=${summary.newConsoleErrors} manualCorrection=${manualCorrection} tagHits=${JSON.stringify(tagHits)} correctionsTouched=${JSON.stringify(correctionsTouched)} oldConsoleKinds=${JSON.stringify(oldConsoleKinds)} (${e2eDir})`,
 );
 process.exit(bad ? 1 : 0);

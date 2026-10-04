@@ -1,3 +1,4 @@
 data/** text eol=lf
 tools/Wisc3.Oracle/golden/** text eol=lf
+tools/Wisc3.Oracle/golden-original/** text eol=lf
 web/test/**/*.json text eol=lf

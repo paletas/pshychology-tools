@@ -107,7 +107,7 @@ public static class EmitData
                 var tb = band.Tests[id];
                 var ranges = new SortedDictionary<int, (int lo, int hi)>();
                 int? prevScaled = null;
-                foreach (var row in CorrectionsLoader.PatchedRows(band, id))
+                foreach (var row in CorrectionsLoader.PatchedRows(band.Id, id))
                 {
                     if (Catalog.IsGap(row)) { Console.Error.WriteLine($"{band.Id}/{id}: raw {row[0]} is unmapped and has no correction"); return 1; }
                     var values = row.Skip(1).Where(v => v != null).Select(v => v!.Value).Distinct().ToList();
@@ -154,7 +154,7 @@ public static class EmitData
                 w.WriteStartObject();
                 foreach (var key in idx.Keys)
                 {
-                    var r = CorrectionsLoader.PatchIndex(idx.Name, key, idx.Calculate(key), out _)!;
+                    var r = CorrectionsLoader.PatchIndex(idx.Name, key, OriginalTables.IndexResult(idx.Name, key), out _)!;
                     w.WritePropertyName(key.ToString(CultureInfo.InvariantCulture));
                     w.WriteStartObject();
                     w.WriteNumber("iq", r.Value);
@@ -167,13 +167,13 @@ public static class EmitData
                 w.WriteEndObject();
             });
 
-        // The cell diff between the old tables and the emitted data must be exactly the corrections set.
+        // The cell diff between the original tables (golden-original) and the emitted data must be exactly the corrections set.
         var scaledDiff = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var band in bands)
             foreach (var id in tests)
             {
-                var tb = band.Tests[id];
-                var patched = CorrectionsLoader.PatchedRows(band, id);
+                var tb = OriginalTables.Test(band.Id, id);
+                var patched = CorrectionsLoader.PatchedRows(band.Id, id);
                 for (int i = 0; i < tb.Rows.Count; i++)
                 {
                     var o = tb.Rows[i];
@@ -189,7 +189,7 @@ public static class EmitData
         foreach (var idx in Catalog.Indices())
             foreach (var key in idx.Keys)
             {
-                var o = idx.Calculate(key)!;
+                var o = OriginalTables.IndexResult(idx.Name, key);
                 var p = CorrectionsLoader.PatchIndex(idx.Name, key, o, out _)!;
                 void Cmp(string field, string a, string b) { if (a != b) indexDiff.Add($"{idx.Name}|{key}|{field}|{a}|{b}"); }
                 var inv = CultureInfo.InvariantCulture;

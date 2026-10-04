@@ -1,6 +1,7 @@
 // Test-only. Never imported by src/.
 // Prediction of what the NEW app must show for a case, derived from the old app's recorded outcome plus
-// the deliberate fixes (4 tags; manual-correction carries the correction ids). The key sets come from the oracle golden indices, never from data/.
+// the deliberate fixes (3 tags). Since REV-11 the old app already holds the approved table corrections, so there is no manual-correction tag.
+// The key sets come from the oracle golden indices, never from data/.
 import type { Age, CaseInput, IndexName, IndexSnapshot, Snapshot, TestSnapshot } from '../../src/engine/types';
 import { INDEX_NAMES } from '../../src/engine/types';
 
@@ -9,7 +10,7 @@ export const TEST_IDS = [
   'Vocabulary', 'ObjectComposition', 'Comprehension', 'SymbolSearch', 'DigitMemory', 'Labyrinth',
 ] as const;
 
-export type Tag = 'gate-low' | 'gate-high-throw' | 'index-missing-key' | 'manual-correction';
+export type Tag = 'gate-low' | 'gate-high-throw' | 'index-missing-key';
 
 export interface OldIndex {
   sum: number | null;
@@ -32,8 +33,6 @@ export interface OldResult {
   throwStage: 'age' | 'raw' | null;
   throwAt: { test: string; raw: number } | null;
   bandId: string | null;
-  correctionsHit?: string[];
-  oldCorrected?: OldResult;
 }
 
 // One row per corrected cell (golden/corrections.json). Scaled rows: band/age/test/raw, old {throws}|{scaled}, corrected = 5 columns.
@@ -83,29 +82,17 @@ export function fixedModel(
   input: CaseInput,
   old: OldResult,
   keySets: KeySets,
-  corrections: GoldenCorrection[],
-): { expected: ExpectedCase; tags: Tag[]; correctionIds: string[] } {
+): { expected: ExpectedCase; tags: Tag[] } {
   const tags: Tag[] = [];
-  let correctionIds: string[] = [];
   if (!strictlySupported(old.age)) {
     if (old.throws && old.throwStage === 'age') tags.push('gate-high-throw');
     else if (old.supported && !old.throws) tags.push('gate-low');
-    return { expected: blocked(old.age), tags, correctionIds };
+    return { expected: blocked(old.age), tags };
   }
 
-  let base = old;
-  const hit = old.correctionsHit ?? [];
-  if (hit.length > 0) {
-    if (!old.oldCorrected) throw new Error('correctionsHit without oldCorrected');
-    for (const id of hit) if (!corrections.some((c) => c.id === id)) throw new Error(`unknown correction id ${id}`);
-    base = old.oldCorrected;
-    correctionIds = [...hit];
-    tags.push('manual-correction');
-  } else if (old.throws && old.throwStage === 'raw') {
-    throw new Error('unexpected old raw-stage throw');
-  } else if (old.throws) {
-    throw new Error('unexpected old throw for a supported age');
-  }
+  const base = old;
+  if (old.throws && old.throwStage === 'raw') throw new Error('unexpected old raw-stage throw');
+  if (old.throws) throw new Error('unexpected old throw for a supported age');
 
   const tests: Record<string, TestSnapshot> = {};
   for (const id of TEST_IDS) {
@@ -147,7 +134,6 @@ export function fixedModel(
       indicesShown: base.indicesShown, indices, charts,
     },
     tags,
-    correctionIds,
   };
 }
 

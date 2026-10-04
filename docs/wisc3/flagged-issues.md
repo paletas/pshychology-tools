@@ -87,7 +87,7 @@ The old app finds an index (IQ, percentile, CI) only for sums that exist as keys
 
 ## 6. Processing Speed index from Coding alone (Symbol Search omitted)
 
-Kept as-is, needs confirmation. When the optional Symbol Search test is omitted, the Processing Speed sum is made from Coding alone and an index is still shown when that sum exists in the table. This happened in 2197 of 10027 simulated cases (21.9%); examples (simulated case ids): s00005, s00012, s00019. Decision for now: kept; to be validated with the psychologist.
+Kept as-is, needs confirmation. When the optional Symbol Search test is omitted, the Processing Speed sum is made from Coding alone and an index is still shown when that sum exists in the table. This happened in 2198 of 10027 simulated cases (21.9%); examples (simulated case ids): s00005, s00012, s00019. Decision for now: kept; to be validated with the psychologist.
 
 ## 7. Age-gate leak (fixed)
 
@@ -103,7 +103,7 @@ none
 
 ## Resolved
 
-Corrected in the new app only (data/corrections/wisc3-pt.json, applied to the emitted data); the old app is unchanged. The full cell list is in docs/wisc3/corrections-report.md.
+Corrected in the new app (data/corrections/wisc3-pt.json, applied to the emitted data) and, since REV-11, also in the table files of the old app (same cells and values; its logic bugs are unchanged). The full cell list is in docs/wisc3/corrections-report.md.
 
 - C1: Table 36, 11y06m (11 1/2 anos), Disposição de Gravuras; raw 38: throws -> 13. Source: WISC-III PT manual, Table 36 (11 1/2 anos); user-confirmed 2026-10-03.
 - D1: Table 36, 06y00m (6 anos), Compreensão; raw 5: 11 -> 10. Source: WISC-III PT manual, Table 36 (6 anos); user-approved 2026-10-03.

@@ -37,20 +37,37 @@ public static class Golden
                         prev = v;
                     }
                 }
-        // Gaps must equal the set of corrections exactly, and each correction must pass its assertions.
+        // REV-11: src/ holds the fixed tables, so the live code has no gap left. golden-original (OriginalTables) keeps the pre-fix
+        // state: its gaps must equal the throwing corrections exactly, the live-vs-original cell diff must be exactly the corrections
+        // set (nothing else), and the live tables must equal the original ones with the corrections applied (= data/).
         var gapsBefore = Catalog.AllGaps();
+        var gapsOriginal = OriginalTables.Gaps;
         var corrections = CorrectionsLoader.All;
-        var gapKeys = gapsBefore.Select(g => $"{g.band}|{g.test}|{g.raw}").OrderBy(x => x, StringComparer.Ordinal).ToList();
+        var gapKeys = gapsOriginal.Select(g => $"{g.band}|{g.test}|{g.raw}").OrderBy(x => x, StringComparer.Ordinal).ToList();
         var corrKeys = corrections.Where(c => c.Kind == "scaled").SelectMany(c => c.Cells.Where(x => x.OldThrows).Select(x => $"{c.Band}|{c.Test}|{x.Raw}")).OrderBy(x => x, StringComparer.Ordinal).ToList();
         var correctionErrors = CorrectionsLoader.Validate();
         int matched = gapKeys.Intersect(corrKeys).Count();
-        Console.WriteLine($"bands={bands.Count} distinctFingerprints={distinct} scaledOutOfRange={outOfRange} gapsBefore={gapsBefore.Count} gapsMatchedCorrections={matched} corrections={corrections.Count} scaledCells={CorrectionsLoader.ScaledCellCount} indexCells={CorrectionsLoader.IndexCellCount}");
-        if (bands.Count != 22 || distinct != 22 || outOfRange != 0 || nonMonotonic != 0 || !gapKeys.SequenceEqual(corrKeys) || correctionErrors.Count != 0)
+        Console.WriteLine($"bands={bands.Count} distinctFingerprints={distinct} scaledOutOfRange={outOfRange} gapsBefore={gapsBefore.Count} gapsOriginal={gapsOriginal.Count} gapsMatchedCorrections={matched} corrections={corrections.Count} scaledCells={CorrectionsLoader.ScaledCellCount} indexCells={CorrectionsLoader.IndexCellCount}");
+        var (vsOrigScaled, vsOrigIndex, vsOrigOther) = OriginalTables.FixedVsOriginal();
+        var (vsDataScaled, vsDataIndex) = OriginalTables.FixedVsData();
+        Console.WriteLine($"fixedVsOriginal scaledCells={vsOrigScaled.Count} indexCells={vsOrigIndex.Count} other={vsOrigOther.Count}");
+        Console.WriteLine($"fixedVsData scaled={vsDataScaled.Count} index={vsDataIndex.Count}");
+        var scaledExpected = new SortedSet<string>(CorrectionsLoader.Scaled.SelectMany(c => c.Cells.Select(cell =>
+            $"{c.Band}|{c.Test}|{cell.Raw}|{(cell.OldThrows ? "throws" : cell.OldInt.ToString(CultureInfo.InvariantCulture))}|{cell.NewInt}")), StringComparer.Ordinal);
+        var indexExpected = new SortedSet<string>(CorrectionsLoader.IndexCorrections.SelectMany(c => c.Cells.Select(cell =>
+            $"{c.Index}|{cell.Sum}|{c.Field}|{(c.Field == "percentile" ? cell.Old.GetDecimal().ToString(CultureInfo.InvariantCulture) : cell.OldInt.ToString(CultureInfo.InvariantCulture))}|{CorrectionsLoader.CellNewText(c, cell)}")), StringComparer.Ordinal);
+        if (bands.Count != 22 || distinct != 22 || outOfRange != 0 || nonMonotonic != 0 || gapsBefore.Count != 0 || !gapKeys.SequenceEqual(corrKeys) || correctionErrors.Count != 0
+            || vsOrigOther.Count != 0 || !vsOrigScaled.SetEquals(scaledExpected) || !vsOrigIndex.SetEquals(indexExpected))
         {
-            Console.Error.WriteLine($"ASSERTION FAILED: bands={bands.Count} distinct={distinct} outOfRange={outOfRange} nonMonotonic={nonMonotonic}");
-            Console.Error.WriteLine("gaps: " + string.Join("; ", gapKeys));
+            Console.Error.WriteLine($"ASSERTION FAILED: bands={bands.Count} distinct={distinct} outOfRange={outOfRange} nonMonotonic={nonMonotonic} gapsBefore={gapsBefore.Count}");
+            Console.Error.WriteLine("original gaps: " + string.Join("; ", gapKeys));
             Console.Error.WriteLine("corrections: " + string.Join("; ", corrKeys));
             foreach (var e in correctionErrors) Console.Error.WriteLine(e);
+            foreach (var x in vsOrigOther) Console.Error.WriteLine("fixedVsOriginal other: " + x);
+            foreach (var x in vsOrigScaled.Except(scaledExpected)) Console.Error.WriteLine("fixedVsOriginal unexpected scaled change " + x);
+            foreach (var x in scaledExpected.Except(vsOrigScaled)) Console.Error.WriteLine("fixedVsOriginal missing scaled change " + x);
+            foreach (var x in vsOrigIndex.Except(indexExpected)) Console.Error.WriteLine("fixedVsOriginal unexpected index change " + x);
+            foreach (var x in indexExpected.Except(vsOrigIndex)) Console.Error.WriteLine("fixedVsOriginal missing index change " + x);
             return 1;
         }
         Write(outDir, "subtests.json", new { bands });
@@ -63,11 +80,11 @@ public static class Golden
             if (c.Kind == "scaled")
             {
                 var band = bands.Single(b => b.Id == c.Band);
-                var tb = band.Tests[c.Test!];
                 foreach (var cell in c.Cells)
                 {
-                    var oldRow = tb.Rows.Single(r => r[0] == cell.Raw);
-                    var shape = cell.OldThrows ? tb.Rows.Single(r => r[0] == c.EquivalentRaw) : oldRow;
+                    var origTb = OriginalTables.Test(c.Band!, c.Test!);
+                    var oldRow = origTb.Rows.Single(r => r[0] == cell.Raw);
+                    var shape = cell.OldThrows ? origTb.Rows.Single(r => r[0] == c.EquivalentRaw) : oldRow;
                     var corrected = new int?[5];
                     for (int i = 0; i < 5; i++) corrected[i] = shape[i + 1] == null ? null : cell.NewInt;
                     object oldValue = cell.OldThrows ? new { throws = true } : new { scaled = oldRow.Skip(1).ToArray() };
@@ -79,7 +96,7 @@ public static class Golden
                 var idx = indexTables[c.Index!];
                 foreach (var cell in c.Cells)
                 {
-                    var r = idx.Calculate((short)cell.Sum)!;
+                    var r = OriginalTables.IndexResult(c.Index!, cell.Sum);
                     var p = CorrectionsLoader.PatchIndex(c.Index!, (short)cell.Sum, r, out _)!;
                     var oldRowObj = new { iq = (int)r.Value, percentile = r.Percentil.ToString(CultureInfo.InvariantCulture), ci90 = new int[] { r.ConfidenceInterval90.BottomBoundary, r.ConfidenceInterval90.TopBoundary }, ci95 = new int[] { r.ConfidenceInterval95.BottomBoundary, r.ConfidenceInterval95.TopBoundary } };
                     object oldValue = c.Field == "percentile" ? r.Percentil.ToString(CultureInfo.InvariantCulture) : int.Parse(CorrectionsLoader.IndexFieldOld(r, c.Field!), CultureInfo.InvariantCulture);
@@ -161,18 +178,18 @@ public static class Golden
         int KindCases(string k) => results.Count(r => r.OldConsole!.Any(c => c.Kind == k));
         var kindCounts = OldConsole.Kinds.ToDictionary(k => k, KindCases);
         Console.WriteLine($"oldConsoleKinds age-throw={kindCounts["age-throw"]} raw-throw={kindCounts["raw-throw"]} visualizer-raw-throw={kindCounts["visualizer-raw-throw"]} visualizer-index-throw={kindCounts["visualizer-index-throw"]}");
-        var badViz = results.Zip(scenarios, (r, sc) => (r, sc)).Where(x => x.r.OldConsole!.Any(c => c.Kind == "visualizer-raw-throw" && !(x.r.Old.BandId == "11y06m" && c.Test == "ImageDisposition" && c.Raw == 38))).Select(x => x.r.Id).ToList();
-        if (badViz.Count > 0 || kindCounts["visualizer-raw-throw"] == 0
+        // REV-11: the old tables have no gap any more, so neither a raw-stage nor a visualizer raw crash is predicted.
+        if (kindCounts["visualizer-raw-throw"] != 0 || kindCounts["raw-throw"] != 0 || kindCounts["visualizer-index-throw"] != 0
             || kindCounts["age-throw"] != results.Count(r => r.Old.ThrowStage == "age")
             || kindCounts["raw-throw"] != results.Count(r => r.Old.ThrowStage == "raw"))
         {
-            Console.Error.WriteLine($"ASSERTION FAILED: oldConsole kinds {string.Join(",", kindCounts.Select(kv => kv.Key + "=" + kv.Value))} badVisualizerRaw={string.Join(";", badViz.Take(10))}");
+            Console.Error.WriteLine($"ASSERTION FAILED: oldConsole kinds {string.Join(",", kindCounts.Select(kv => kv.Key + "=" + kv.Value))} expected raw-throw=0 visualizer-raw-throw=0 visualizer-index-throw=0");
             return 1;
         }
-        Write(outDir, "scenarios.json", scenarios.Zip(results, (s, r) => new { s.Id, s.TestDate, s.BirthDate, s.Raw, old = r.Old, correctionsHit = r.CorrectionsHit, oldCorrected = r.OldCorrected, oldConsole = r.OldConsole }).ToList());
+        Write(outDir, "scenarios.json", scenarios.Zip(results, (s, r) => new { s.Id, s.TestDate, s.BirthDate, s.Raw, old = r.Old, correctionsTouched = r.CorrectionsTouched, oldConsole = r.OldConsole }).ToList());
 
         // ---- findings.json
-        Write(outDir, "findings.json", Findings.Build(indices, scenarios, results, gateEntries, gapsBefore, corrections));
+        Write(outDir, "findings.json", Findings.Build(indices, scenarios, results, gateEntries, gapsBefore, gapsOriginal, corrections));
         return 0;
     }
 

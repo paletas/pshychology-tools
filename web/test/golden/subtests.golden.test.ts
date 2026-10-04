@@ -2,18 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { scaledFor, selectBand } from '../../src/engine/bands';
 import { COLUMNS } from '../../src/engine/types';
 import type { GoldenCorrection } from '../shared/fixed-model';
-import { loadData, loadGolden } from '../shared/load';
+import { loadData, loadGoldenOriginal } from '../shared/load';
 
 const data = loadData();
-const golden = loadGolden<{ bands: any[] }>('subtests.json');
-const corrections = loadGolden<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'scaled');
+const golden = loadGoldenOriginal<{ bands: any[] }>('subtests.json');
+const corrections = loadGoldenOriginal<GoldenCorrection[]>('corrections.json').filter((c) => c.kind === 'scaled');
 
 const columnsFor = (testId: string, s: number | null) => {
   const cols = data.tests.find((t) => t.id === testId)!.columns;
   return COLUMNS.map((c) => (cols.includes(c) ? s : null));
 };
 
-describe('subtests vs golden', () => {
+// Against golden-original (the pre-fix tables, REV-11); the live fixed tables are checked by fixed-old.golden.
+describe('subtests vs golden-original', () => {
   it('every row matches the old table, except the corrected cells which match golden corrected', () => {
     let rows = 0;
     let corrected = 0;

@@ -23,7 +23,7 @@ public static class Findings
 
     public static object Build(List<IndexTable> indices, List<Scenario> scenarios, List<ScenarioResult> results,
         List<(int[] age, bool supported, int? band, bool throws)> grid,
-        List<(string band, string test, int raw)> gapsBefore, List<Correction> corrections)
+        List<(string band, string test, int raw)> gapsBefore, List<(string band, string test, int raw)> gapsOriginal, List<Correction> corrections)
     {
         var iq999 = new Dictionary<string, List<int>>();
         var pct0or100 = new Dictionary<string, List<object>>();
@@ -103,6 +103,7 @@ public static class Findings
         return new
         {
             gapsBefore = gapsBefore.Select(g => new { g.band, g.test, g.raw }).ToList(),
+            gapsOriginal = gapsOriginal.Select(g => new { g.band, g.test, g.raw }).ToList(),
             correctionsApplied = corrections.Select(c => new { c.Id, c.Kind, c.Table, cells = c.Cells.Count, c.Source, c.Approval }).ToList(),
             iq999,
             pct0or100,
