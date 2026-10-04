@@ -72,7 +72,7 @@ export function FactorSvg({ payload, derived, optional, w }: { payload: ChartPay
             </g>
           );
         })}
-        <Txt x={(x0 + x1) / 2} y={h - 8} size={13} fill={C.ink} weight={600}>
+        <Txt x={(x0 + x1) / 2} y={h - 8} size={narrow ? 12 : 13} fill={C.ink} weight={600}>
           {mean === null ? gr.key : ptNew['chart.factorial.groupMean'].replace('{0}', gr.key).replace('{1}', comma(mean))}
         </Txt>
       </g>

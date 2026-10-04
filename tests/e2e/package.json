@@ -13,6 +13,7 @@
     "report:corrections": "tsx scripts/corrections-report.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "1.63.0",
     "@types/node": "^26.6.4",
     "tsx": "^4.23.15",

@@ -12,7 +12,8 @@ import { collectErrors } from '../helpers/console';
 import { reportsDir } from '../helpers/paths';
 
 // [REV-14] The three SVG charts show a tooltip on hover, keyboard focus and tap (the old Chart.js charts did on hover).
-// Expected texts are derived here, independently of web/src/charts/tip.tsx.
+// Expected texts are derived here, independently of the chart implementation (the app's tooltip module).
+// Tests: (a)-(e), plus the negative controls (f) split in three (f1-f3): 8 tests in all.
 type Charts = {
   standardResults: { Verbal: (number | null)[]; Realization: (number | null)[] };
   factorial: { VerbalComprehension: (number | null)[]; PerceptiveOrganization: (number | null)[]; ProcessingVelocity: (number | null)[] };
