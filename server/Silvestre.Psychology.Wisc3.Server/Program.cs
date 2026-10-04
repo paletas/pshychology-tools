@@ -24,7 +24,8 @@ const string Immutable = "public, max-age=31536000, immutable";
 
 app.MapMethods("/healthz", new[] { HttpMethods.Get, HttpMethods.Head }, () => Results.Text("ok"));
 
-app.MapMethods("/", new[] { HttpMethods.Get, HttpMethods.Head }, () => Results.Redirect("/wisc3"));
+// relative on purpose: served at / and behind Traefik stripprefix /new (README Deploy)
+app.MapMethods("/", new[] { HttpMethods.Get, HttpMethods.Head }, () => Results.Redirect("wisc3"));
 
 app.MapMethods("/wisc3", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext ctx) =>
 {
@@ -67,7 +68,8 @@ app.MapMethods("/api/reference/manifest", new[] { HttpMethods.Get, HttpMethods.H
         dataVersion = bundle.DataVersion,
         sha256 = bundle.Sha256,
         bytes = bundle.Bytes.Length,
-        url = $"/api/reference/bundle/{bundle.Sha256}.json",
+        // relative on purpose: served at / and behind Traefik stripprefix /new (README Deploy)
+        url = $"bundle/{bundle.Sha256}.json",
     });
 });
 

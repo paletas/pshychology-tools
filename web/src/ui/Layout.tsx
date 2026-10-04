@@ -29,7 +29,7 @@ export function Layout({ children, dataVersion, glance, legacySlot, themeSlot }:
             {ptNew['brand']}
           </div>
           <nav id="main-nav" className={menuOpen ? 'open' : undefined} aria-label={ptNew['nav.aria']}>
-            <a href="/wisc3" aria-current="page">WISC-III</a>
+            <a href="wisc3" aria-current="page">WISC-III</a>
             {legacySlot}
           </nav>
           <button type="button" className="menu" aria-controls="main-nav" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>

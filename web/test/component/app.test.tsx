@@ -176,7 +176,7 @@ describe('App', () => {
     await renderApp();
     const link = document.querySelector('header.topbar nav a')!;
     expect(link.textContent).toBe('WISC-III');
-    expect(link.getAttribute('href')).toBe('/wisc3');
+    expect(link.getAttribute('href')).toBe('wisc3');
     expect(document.querySelector('h1')!.textContent).toBe('WISC-III');
     const footer = document.querySelector('footer')!;
     expect(footer.textContent).toContain(pt['Language'] + ': ' + pt['Language.pt-PT']);

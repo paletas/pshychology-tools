@@ -1,8 +1,8 @@
 {
-  "id": "/wisc3",
   "name": "Silvestre Pshychology Tools - WISC3",
   "short_name": "SILVESTRE - WISC3",
-  "start_url": "/wisc3",
+  "start_url": "wisc3",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#03173d",
