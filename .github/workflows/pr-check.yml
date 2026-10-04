@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the production image
         run: docker build -f src/Silvestre.Psychology.Tools.WebApp/Dockerfile -t smoke:webapp .
