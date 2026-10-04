@@ -24,7 +24,7 @@ for (const { w, h, glance, menu } of WIDTHS) {
       const u = new URL(r.url());
       if (/^https?:$/.test(u.protocol) && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1' && !isAdUrl(r.url())) external.push(r.url());
     });
-    await page.goto('/wisc3');
+    await page.goto('wisc3');
     await waitReady(page);
 
     // top bar, its WISC-III link (behind the menu button on phones) and the notice

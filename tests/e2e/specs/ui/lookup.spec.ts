@@ -31,7 +31,7 @@ const sFor = (scaled: Record<string, Range>, raw: number) => Object.entries(scal
 const SHOT = join(reportsDir, 'screens/lookup');
 async function open(page: Page, w: number, h: number) {
   await page.setViewportSize({ width: w, height: h });
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
 }
 async function show(page: Page) {
@@ -116,7 +116,7 @@ test('(b) wide: the highlighted cells are the data ranges holding each raw score
   const dark = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
   await blockAds(dark);
   const dp = await dark.newPage();
-  await dp.goto('/wisc3');
+  await dp.goto('wisc3');
   await waitReady(dp);
   await fillCase(dp, c.input);
   await show(dp);
@@ -357,7 +357,7 @@ for (const [w, h] of [[1440, 900], [390, 844]] as const) {
       await blockAds(context);
       const page = await context.newPage();
       const log = collectErrors(page);
-      await page.goto('/wisc3');
+      await page.goto('wisc3');
       await waitReady(page);
       await fillCase(page, midCase(refData()).input);
       await show(page);
