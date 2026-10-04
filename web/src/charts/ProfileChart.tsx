@@ -3,6 +3,7 @@ import { C, Dot, MIN_WIDTH, Txt, frame, runs, useWidth } from './frame';
 import type { ChartPayloads } from '../engine/charts';
 import { pt } from '../i18n/pt';
 import { ptNew } from '../i18n/pt-new';
+import { profileTip, useChartTip } from './tip';
 
 // payload slot -> subtest id (the order of chartPayloads.standardResults: 6 verbal, then 7 realization)
 export const PROFILE_IDS = ['Information', 'Similarities', 'Arithmetic', 'Vocabulary', 'Comprehension', 'DigitMemory', 'ImageCompletion', 'Code', 'ImageDisposition', 'Cubes', 'ObjectComposition', 'SymbolSearch', 'Labyrinth'];
@@ -35,8 +36,10 @@ export function ProfileSvg({ payload, optional, w }: { payload: ChartPayloads['s
     { key: 'R', color: C.r, values: payload.Realization },
   ];
   const marks = lines.reduce((a, l) => a + l.values.filter((v) => v !== null).length, 0);
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={ptNew['chart.standard.aria']} data-testid="chart-standard" data-marks={marks}>
+  const tip = useChartTip('standard', w, JSON.stringify(payload));
+  const slots = lines.flatMap((l) => l.values.map((v, i) => [i, v] as const)).filter((p): p is readonly [number, number] => p[1] !== null).sort((a, b) => a[0] - b[0]);
+  const svg = (
+    <svg ref={tip.svgRef} onKeyDown={tip.onKeyDown} viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="group" aria-label={ptNew['chart.standard.aria']} data-testid="chart-standard" data-marks={marks}>
       {g}
       {lines.map((l) => (
         <g key={l.key}>
@@ -54,6 +57,10 @@ export function ProfileSvg({ payload, optional, w }: { payload: ChartPayloads['s
       {PROFILE_IDS.map((id, i) => (
         <Txt key={id} x={x(i)} y={h - m.b + 16} size={11.5} anchor={narrow ? 'end' : 'middle'} rot={narrow ? -50 : 0}>{ptNew[`chart.short.${id}`]}</Txt>
       ))}
+      {slots.map(([i, v], k) =>
+        tip.target({ index: k, count: marks, id: PROFILE_IDS[i], content: profileTip(PROFILE_IDS[i], i, v, optional[PROFILE_IDS[i]]), ax: x(i), ay: y(v), box: { x: m.l + step * i, y: m.t, width: step, height: h - m.t - m.b } }),
+      )}
     </svg>
   );
+  return <>{svg}{tip.overlay}</>;
 }

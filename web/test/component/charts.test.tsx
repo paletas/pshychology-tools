@@ -1,7 +1,7 @@
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChartsSection } from '../../src/charts/ChartsSection';
 import { chartsDerived } from '../../src/charts/derived';
 import type { IqCi } from '../../src/charts/IqChart';
@@ -80,12 +80,12 @@ describe('chart payloads (unchanged)', () => {
 });
 
 describe('SVG charts', () => {
-  it('draws the marks (13 / 10 / 6), role=img, test ids, no NaN, text at least 11 px', () => {
+  it('draws the marks (13 / 10 / 6), role=group, test ids, no NaN, text at least 11 px', () => {
     const { container } = show(FIXTURE);
     for (const [id, n, items] of [['chart-standard', 13, 13], ['chart-factorial', 10, 10], ['chart-qi', 6, 6]] as const) {
       const el = svg(container, id);
       expect(el, id).toBeTruthy();
-      expect(el.getAttribute('role')).toBe('img');
+      expect(el.getAttribute('role')).toBe('group');
       expect(el.getAttribute('aria-label')).toBeTruthy();
       expect(el.getAttribute('data-marks')).toBe(String(n));
       expect(el.querySelectorAll('[data-mark]')).toHaveLength(items);
@@ -198,4 +198,114 @@ describe('SVG charts', () => {
     }
     expect(container.querySelectorAll('figure.fig')).toHaveLength(3);
   });
+});
+
+describe('[REV-14] chart tooltips', () => {
+  const tipText = (c: HTMLElement, kind: string) => {
+    const el = c.querySelector(`[data-testid="chart-tip-${kind}"]`);
+    if (!el) return null;
+    return {
+      for: el.getAttribute('data-tip-for'),
+      title: el.querySelector('[data-testid="chart-tip-title"]')!.textContent,
+      lines: [...el.querySelectorAll('[data-testid="chart-tip-line"]')].map((l) => l.textContent),
+    };
+  };
+  const hit = (c: HTMLElement, tip: string) => c.querySelector<SVGElement>(`[data-tip="${tip}"]`)!;
+  const clone = () => JSON.parse(JSON.stringify(FIXTURE)) as ChartPayloads;
+  const title = (id: string) => pt[`Test.${id}`] + (optional[id] ? ' ' + ptNew['optional'] : '');
+
+  function guarded(fn: () => void) {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      fn();
+      expect(err).toHaveBeenCalledTimes(0);
+    } finally {
+      err.mockRestore();
+    }
+  }
+
+  it('(1) one target per mark, one tab stop per chart, no tooltip before interaction', () => guarded(() => {
+    const { container } = show(FIXTURE);
+    for (const [id, n] of [['chart-standard', 13], ['chart-factorial', 10], ['chart-qi', 6]] as const) {
+      const el = svg(container, id);
+      expect(el.querySelectorAll('.tip-hit')).toHaveLength(n);
+      expect(el.getAttribute('data-marks')).toBe(String(n));
+      expect(el.querySelectorAll('[data-mark]')).toHaveLength(n);
+      expect(el.querySelectorAll('.tip-hit[tabindex="0"]')).toHaveLength(1);
+      expect(el.querySelectorAll('.tip-hit[data-mark]')).toHaveLength(0);
+    }
+    expect(container.querySelectorAll('[data-testid^="chart-tip-"]')).toHaveLength(0);
+  }));
+
+  it('(2) QI tooltip: result and both intervals; Escape closes it', () => guarded(() => {
+    const { container } = show(FIXTURE);
+    fireEvent.click(hit(container, 'qi-V'));
+    expect(tipText(container, 'qi')).toEqual({ for: 'qi-V', title: 'QI Verbal', lines: ['Resultado: 133', 'Intervalo a 90%: 125 - 137', 'Intervalo a 95%: 123 - 138'] });
+    expect(hit(container, 'qi-V').getAttribute('aria-label')).toBe('QI Verbal. Resultado: 133. Intervalo a 90%: 125 - 137. Intervalo a 95%: 123 - 138');
+    fireEvent.click(hit(container, 'qi-CV'));
+    expect(tipText(container, 'qi')).toEqual({ for: 'qi-CV', title: 'Compreensão Verbal', lines: ['Resultado: 134', 'Intervalo a 90%: 124 - 138', 'Intervalo a 95%: 123 - 139'] });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(tipText(container, 'qi')).toBeNull();
+  }));
+
+  it('(3) standard and factorial tooltips', () => guarded(() => {
+    const { container } = show(FIXTURE);
+    fireEvent.click(hit(container, 'standard-Information'));
+    expect(tipText(container, 'standard')).toMatchObject({ title: 'Informação', lines: ['Verbal: 12'] });
+    fireEvent.click(hit(container, 'standard-Labyrinth'));
+    expect(tipText(container, 'standard')).toMatchObject({ title: title('Labyrinth'), lines: ['Realização: 8'] });
+    fireEvent.click(hit(container, 'factorial-Code'));
+    expect(tipText(container, 'factorial')).toMatchObject({ title: title('Code'), lines: ['Velocidade de Processamento: 18'] });
+  }));
+
+  it('(4) both intervals show whatever the CI selector says', () => guarded(() => {
+    const lines = (ci: IqCi) => {
+      const { container, unmount } = show(FIXTURE, ci);
+      fireEvent.click(hit(container, 'qi-V'));
+      const t = tipText(container, 'qi')!.lines;
+      unmount();
+      return t;
+    };
+    expect(lines('Percentil90')).toEqual(lines('Percentil95'));
+  }));
+
+  it('(5) an unavailable index has no target; 999 is shown as 999', () => guarded(() => {
+    const a = clone();
+    a.qi.Indices[2] = { label: 'Velocidade de Processamento', min: null, max: null, q1: null, q3: null, median: null };
+    const first = show(a);
+    expect(first.container.querySelector('[data-tip="qi-VP"]')).toBeNull();
+    expect(svg(first.container, 'chart-qi').querySelectorAll('.tip-hit')).toHaveLength(5);
+    first.unmount();
+    const b = clone();
+    b.qi.QI[2].median = 999;
+    const { container } = show(b);
+    fireEvent.click(hit(container, 'qi-EC'));
+    expect(tipText(container, 'qi')!.lines[0]).toBe('Resultado: 999');
+  }));
+
+  it('(6) keyboard: focus shows, arrows/Home/End move the single tab stop', () => guarded(() => {
+    const { container } = show(FIXTURE);
+    const el = svg(container, 'chart-qi');
+    act(() => hit(container, 'qi-V').focus());
+    expect(tipText(container, 'qi')!.for).toBe('qi-V');
+    const press = (key: string) => fireEvent.keyDown(el, { key });
+    press('ArrowRight');
+    expect(document.activeElement!.getAttribute('data-tip')).toBe('qi-R');
+    expect(tipText(container, 'qi')!.for).toBe('qi-R');
+    expect(hit(container, 'qi-R').getAttribute('tabindex')).toBe('0');
+    expect(hit(container, 'qi-V').getAttribute('tabindex')).toBe('-1');
+    press('End');
+    expect(tipText(container, 'qi')!.for).toBe('qi-VP');
+    press('Home');
+    expect(tipText(container, 'qi')!.for).toBe('qi-V');
+    press('ArrowLeft');
+    expect(document.activeElement!.getAttribute('data-tip')).toBe('qi-V');
+    expect(tipText(container, 'qi')!.for).toBe('qi-V');
+  }));
+
+  it('(7) a null payload has no targets and no tooltip', () => guarded(() => {
+    const { container } = show(null);
+    expect(container.querySelectorAll('.tip-hit')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-testid^="chart-tip-"]')).toHaveLength(0);
+  }));
 });

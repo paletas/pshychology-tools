@@ -4,6 +4,7 @@ import type { ChartsDerived, FactorKey } from './derived';
 import type { ChartPayloads } from '../engine/charts';
 import { pt } from '../i18n/pt';
 import { ptNew } from '../i18n/pt-new';
+import { factorTip, useChartTip, type TargetSpec } from './tip';
 
 // payload slots per factor (chartPayloads.factorial has 10 slots: 4 CV, 4 OP, 2 VP) and their subtest ids
 const GROUPS: { key: FactorKey; ids: string[]; color: string; field: 'VerbalComprehension' | 'PerceptiveOrganization' | 'ProcessingVelocity'; from: number }[] = [
@@ -35,6 +36,8 @@ export function FactorSvg({ payload, derived, optional, w }: { payload: ChartPay
   const total = GROUPS.reduce((a, gr) => a + gr.ids.length, 0);
   const pad = 18;
   const unit = (w - m.l - m.r - pad * (GROUPS.length - 1)) / total;
+  const tip = useChartTip('factorial', w, JSON.stringify(payload));
+  const specs: Omit<TargetSpec, 'index' | 'count'>[] = [];
   let cursor = m.l;
   let marks = 0;
   const groups = GROUPS.map((gr) => {
@@ -45,6 +48,10 @@ export function FactorSvg({ payload, derived, optional, w }: { payload: ChartPay
     const px = (i: number) => x0 + unit * (i + 0.5);
     const mean = derived.factorMeans[gr.key];
     marks += values.filter((v) => v !== null).length;
+    gr.ids.forEach((id, i) => {
+      const v = values[i];
+      if (v !== null) specs.push({ id, content: factorTip(id, gr.key, v, optional[id]), ax: px(i), ay: y(v), box: { x: x0 + unit * i, y: m.t, width: unit, height: h - m.t - m.b } });
+    });
     return (
       <g key={gr.key} data-group={gr.key}>
         {mean !== null && <line data-mean={gr.key} x1={x0} x2={x1} y1={y(mean)} y2={y(mean)} stroke={gr.color} strokeWidth={1.5} strokeDasharray="2 4" opacity={0.8} />}
@@ -71,10 +78,12 @@ export function FactorSvg({ payload, derived, optional, w }: { payload: ChartPay
       </g>
     );
   });
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={ptNew['chart.factorial.aria']} data-testid="chart-factorial" data-marks={marks} data-group-means={JSON.stringify(derived.factorMeans)}>
+  const svg = (
+    <svg ref={tip.svgRef} onKeyDown={tip.onKeyDown} viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="group" aria-label={ptNew['chart.factorial.aria']} data-testid="chart-factorial" data-marks={marks} data-group-means={JSON.stringify(derived.factorMeans)}>
       {g}
       {groups}
+      {specs.map((s, k) => tip.target({ ...s, index: k, count: specs.length }))}
     </svg>
   );
+  return <>{svg}{tip.overlay}</>;
 }
