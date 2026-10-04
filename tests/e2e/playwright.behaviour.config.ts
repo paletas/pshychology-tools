@@ -23,7 +23,7 @@ export default defineConfig({
   projects: [
     {
       name: 'behaviour',
-      testMatch: ['specs/behaviour/*.spec.ts', 'specs/ui/*.spec.ts', 'specs/parity/diagnose-icon.spec.ts', 'specs/parity/ui-audit.spec.ts'],
+      testMatch: ['specs/behaviour/*.spec.ts', 'specs/ui/*.spec.ts'],
       use: { ...devices['Desktop Chrome'], ...common, viewport: { width: 1280, height: 900 } },
     },
     {

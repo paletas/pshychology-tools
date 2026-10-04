@@ -19,9 +19,15 @@ function inkRatio(canvas: HTMLCanvasElement): number {
   return ink / (canvas.width * canvas.height);
 }
 
-/** Fraction of pixels with alpha > 0 on a canvas located in the new app. */
-export function canvasInkRatio(locator: Locator): Promise<number> {
-  return locator.evaluate(inkRatio);
+/** New app (SVG charts): the figure's data-marks count, 0 when the figure is absent. */
+export async function svgMarks(locator: Locator): Promise<number> {
+  if ((await locator.count()) === 0) return 0;
+  return Number((await locator.getAttribute('data-marks')) ?? 0);
+}
+
+/** New app: true when the figure has an SVG with marks (data-marks > 0) and drawn children. */
+export function svgHasInk(locator: Locator): Promise<boolean> {
+  return locator.evaluate((el) => el.tagName.toLowerCase() === 'svg' && Number(el.getAttribute('data-marks')) > 0 && el.querySelectorAll('path, line, circle, rect').length > 0);
 }
 
 /** Same for an old-app chart, via the wisc3 module's chart instance. */

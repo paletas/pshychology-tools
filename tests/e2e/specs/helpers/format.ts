@@ -9,9 +9,8 @@ export function expectedCells(data: RefData, s: Snapshot, ci: 'Percentil90' | 'P
   const out: Record<string, string> = {};
   for (const t of data.tests) {
     const snap = s.tests[t.id];
-    COLUMNS.forEach((c, i) => {
-      out[`scaled-${t.id}-${c}`] = String(snap.scaled[i] ?? '');
-    });
+    // one value per row (the columns it stands for are in data-columns)
+    out[`scaled-${t.id}`] = String(snap.scaled.find((v) => v !== null && v !== undefined) ?? '');
   }
   for (const c of COLUMNS) out[`sum-${c}`] = String(s.sums[c]);
   out['sum-complete'] = String(s.sums.complete);

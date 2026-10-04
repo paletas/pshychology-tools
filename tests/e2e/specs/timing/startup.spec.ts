@@ -18,7 +18,8 @@ const median = (xs: number[]): number => {
   return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
 };
 
-async function ageFilled(page: Page): Promise<boolean> {
+async function ageFilled(page: Page, app: 'old' | 'new'): Promise<boolean> {
+  if (app === 'new') return ((await page.getByTestId('age-years').first().textContent({ timeout: 500 }).catch(() => '')) ?? '').trim() !== '';
   return (await page.locator('#subjectAgeYear').inputValue()) !== '';
 }
 
@@ -37,7 +38,7 @@ async function measure(page: Page, app: 'old' | 'new'): Promise<number> {
   }
   const deadline = Date.now() + 60_000;
   let lastEntry = Date.now();
-  while (!(await ageFilled(page))) {
+  while (!(await ageFilled(page, app))) {
     if (Date.now() > deadline) throw new Error(`${app}: age fields never filled`);
     if (app === 'old' && Date.now() - lastEntry > 1_500) {
       await fillDates(page, TEST_DATE, BIRTH_DATE);

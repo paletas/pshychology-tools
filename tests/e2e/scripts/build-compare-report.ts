@@ -107,7 +107,7 @@ for (const c of expectedDiffs) {
   for (const d of c.oldVsNew ?? []) md.push(`- ${d.field}: ${d.a} -> ${d.b}`);
   md.push('');
 }
-md.push('## QI chart y-axis (review cases)', '', 'The min is asserted equal; the max is recorded only (tick generation differs between Chart.js 2 and 4).', '', '| Case | old min/max | new min/max |', '|---|---|---|');for (const c of cases.filter((x) => (x as any).qiAxis)) {  const a = (c as any).qiAxis as { old: { min: number; max: number } | null; new: { min: number; max: number } | null };  md.push(`| ${c.id} | ${a.old ? `${a.old.min} / ${a.old.max}` : 'n/a'} | ${a.new ? `${a.new.min} / ${a.new.max}` : 'n/a'} |`);}md.push('');
+md.push('## QI chart y-axis (review cases)', '', 'The min is asserted equal; the max is recorded only (tick generation differs between Chart.js 2 and the new SVG axis).', '', '| Case | old min/max | new min/max |', '|---|---|---|');for (const c of cases.filter((x) => (x as any).qiAxis)) {  const a = (c as any).qiAxis as { old: { min: number; max: number } | null; new: { min: number; max: number } | null };  md.push(`| ${c.id} | ${a.old ? `${a.old.min} / ${a.old.max}` : 'n/a'} | ${a.new ? `${a.new.min} / ${a.new.max}` : 'n/a'} |`);}md.push('');
 md.push('## Failing cases', '');
 const failing = cases.filter((c) => !['pass', 'expected-diff'].includes(c.verdict));
 if (failing.length === 0) md.push('None.', '');

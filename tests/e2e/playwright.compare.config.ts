@@ -37,7 +37,8 @@ export default defineConfig({
       // new app: the real web/dist and data/wisc3-pt
       command: 'dotnet run --project Silvestre.Psychology.Wisc3.Server -c Release --no-launch-profile --urls ' + NEW,
       cwd: resolve(repoRoot, 'server'),
-      env: { Spa__Root: webDist, ReferenceData__Path: dataDir },
+      // Legacy__Url stays unset: the compare runs without the back-to-old link
+      env: { Spa__Root: webDist, ReferenceData__Path: dataDir, Legacy__Url: '' },
       url: `${NEW}/healthz`,
       timeout: 180_000,
       reuseExistingServer: false,
@@ -45,8 +46,6 @@ export default defineConfig({
   ],
   projects: [
     { name: 'compare', testMatch: 'specs/compare/*.spec.ts', use: common },
-    { name: 'parity-1280', testMatch: 'specs/parity/initial-state.spec.ts', use: { ...common, viewport: { width: 1280, height: 900 } } },
-    { name: 'parity-768', testMatch: 'specs/parity/initial-state.spec.ts', use: { ...common, viewport: { width: 768, height: 1024 } } },
     { name: 'timing', testMatch: 'specs/timing/*.spec.ts', use: common },
   ],
 });

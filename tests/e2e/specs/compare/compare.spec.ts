@@ -10,7 +10,7 @@ import { loadGolden } from '../../../../web/test/shared/load';
 import type { CaseRecord } from '../../scripts/generate-cases';
 import { blockAds } from '../helpers/adblock';
 import type { AdLog } from '../helpers/adblock';
-import { canvasInkRatio, NEW_CHARTS, OLD_CHART_INSTANCES, oldCanvasInkRatio } from '../helpers/canvas';
+import { NEW_CHARTS, OLD_CHART_INSTANCES, oldCanvasInkRatio, svgMarks } from '../helpers/canvas';
 import { diff, uncovered } from '../helpers/compare';
 import type { FieldDiff, Verdict } from '../helpers/compare';
 import { collectErrors } from '../helpers/console';
@@ -44,6 +44,17 @@ const casesDir = join(reportsDir, 'compare/cases');
 const chartsDir = join(reportsDir, 'screens/charts');
 mkdirSync(casesDir, { recursive: true });
 mkdirSync(chartsDir, { recursive: true });
+
+async function pollMarks(read: () => Promise<number>): Promise<number> {
+  let v = 0;
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    v = await read();
+    if (v > 0) return v;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return v;
+}
 
 /** Fixed review cases whose old/new pages are saved as screenshots (V18). */
 const REVIEW_IDS = new Set(['strat-10y00m-1', 'edge-index-missing-key', 'edge-all-max']);
@@ -117,7 +128,7 @@ for (const c of cases) {
       const oldIndicesShown = pred.old.indicesShown && !pred.old.throws;
       let oldInk: number[] = [0, 0, 0];
       if (oldIndicesShown) oldInk = await Promise.all(OLD_CHART_INSTANCES.map((i) => pollInk(() => oldCanvasInkRatio(oldPage, i))));
-      // [REV-8] QI y-axis range of the review cases (old: Chart.js 2 instance, new: Chart.js 4 chart)
+      // [REV-8] QI y-axis range of the review cases (old: Chart.js 2 instance, new: SVG data-y-min/data-y-max)
       let oldAxis: { min: number; max: number } | null = null;
       if (REVIEW_IDS.has(c.id) && oldIndicesShown) {
         oldAxis = await oldPage.evaluate(() => {
@@ -133,8 +144,14 @@ for (const c of cases) {
       newLog.clear();
       const newRead = await readNew(newPage, c);
       const newIndicesShown = model.expected.indicesShown;
-      let newInk: number[] = [0, 0, 0];
-      if (newIndicesShown) newInk = await Promise.all(NEW_CHARTS.map((ch) => pollInk(() => canvasInkRatio(newPage.getByTestId(ch)))));
+      // new charts are SVG: marks when indices exist, the chart-empty-* state (and no marks) when they do not
+      let newMarks: number[] = [0, 0, 0];
+      let newEmpty = 0;
+      if (newIndicesShown) newMarks = await Promise.all(NEW_CHARTS.map((ch) => pollMarks(() => svgMarks(newPage.getByTestId(ch)))));
+      else {
+        newEmpty = await newPage.locator('[data-testid^="chart-empty-"]').count();
+        newMarks = await Promise.all(NEW_CHARTS.map((ch) => svgMarks(newPage.getByTestId(ch))));
+      }
       let newAxis: { min: number; max: number } | null = null;
       if (REVIEW_IDS.has(c.id) && newIndicesShown) newAxis = await newPage.evaluate(() => (window as any).__wisc3Debug.chartAxis('chart-qi'));
       if (REVIEW_IDS.has(c.id)) await newPage.screenshot({ path: join(chartsDir, `${c.id}-new.png`), fullPage: true });
@@ -145,15 +162,16 @@ for (const c of cases) {
       const oldVsNew: FieldDiff[] = diff(oldRead, newRead);
       const notCovered = uncovered(oldVsNew, tags, expNew, model.correctionIds, corrections);
       const blankOld = oldIndicesShown && oldInk.some((v) => v < MIN_INK);
-      const blankNew = newIndicesShown && newInk.some((v) => v < MIN_INK);
+      const blankNew = newIndicesShown ? newMarks.some((v) => !(v > 0)) : newEmpty !== 3 || newMarks.some((v) => v > 0);
 
-      // max is recorded only: tick generation differs between Chart.js 2 and 4
+      // max is recorded only: tick generation differs between Chart.js 2 and the new SVG axis
       const qiAxisBad = REVIEW_IDS.has(c.id) && oldIndicesShown && newIndicesShown && (oldAxis === null || newAxis === null || oldAxis.min !== newAxis.min);
       if (REVIEW_IDS.has(c.id)) record.qiAxis = { old: oldAxis, new: newAxis };
       if (qiAxisBad) record.regressionField = 'qiAxis.min';
 
       Object.assign(record, {
-        chartInk: { old: oldInk, new: newInk },
+        chartInk: { old: oldInk },
+        chartMarks: { new: newMarks, emptyStates: newEmpty },
         blankCharts: { old: blankOld, new: blankNew },
         consoleErrors: { old: oldErrors, new: newErrors },
         oldConsole,

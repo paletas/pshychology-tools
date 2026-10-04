@@ -51,9 +51,13 @@ test('C6 nothing about the child is stored or sent', async ({ browser }) => {
       const cache = await caches.open(name);
       for (const req of await cache.keys()) cacheUrls.push(req.url);
     }
-    return { local: localStorage.length, session: sessionStorage.length, idbDump, cacheUrls };
+    const cookies = document.cookie.split(';').map((c) => c.split('=')[0].trim()).filter(Boolean);
+    return { cookies, local: localStorage.length, session: sessionStorage.length, idbDump, cacheUrls };
   });
 
+  // the only thing that may be kept is the theme preference cookie
+  expect(stored.cookies.filter((n) => n !== 'wisc3-theme')).toEqual([]);
+  expect((await context.cookies()).map((c) => c.name).filter((n) => n !== 'wisc3-theme')).toEqual([]);
   expect(stored.local).toBe(0);
   expect(stored.session).toBe(0);
   expect(Object.keys(stored.idbDump)).toEqual(['wisc3-refdata']);

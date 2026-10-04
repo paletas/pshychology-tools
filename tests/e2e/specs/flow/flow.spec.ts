@@ -4,14 +4,14 @@ import { expect, test } from '@playwright/test';
 import { scoreCase } from '../../../../web/src/engine/scoring';
 import { blockAds } from '../helpers/adblock';
 import { cellMismatches, fillCase, readCells, waitControlled, waitReady } from '../helpers/app';
-import { canvasInkRatio, NEW_CHARTS } from '../helpers/canvas';
+import { NEW_CHARTS, svgHasInk, svgMarks } from '../helpers/canvas';
 import { flowCases, refData } from '../helpers/cases';
 import { collectErrors } from '../helpers/console';
 import { expectedArrows, expectedCells } from '../helpers/format';
 import { reportsDir } from '../helpers/paths';
 import { resetTmp } from '../helpers/tmp';
 
-// C7: six cases entered like a user would (fill + Tab), every cell checked against scoreCase, charts non-blank, no console errors.
+// C7: six cases entered like a user would (fill + Tab), every cell checked against scoreCase, SVG charts with marks, no console errors.
 test('C7 flow: six cases, cells, charts, no console errors', async ({ browser }, testInfo) => {
   resetTmp();
   const data = refData();
@@ -44,14 +44,17 @@ test('C7 flow: six cases, cells, charts, no console errors', async ({ browser },
 
     if (c.name.startsWith('C1')) {
       // manual-confirmed correction: scaled 13 in both columns
-      await expect(page.getByTestId('scaled-ImageDisposition-realization')).toHaveText('13');
-      await expect(page.getByTestId('scaled-ImageDisposition-perceptiveOrganization')).toHaveText('13');
+      const row = page.getByTestId('scaled-ImageDisposition');
+      await expect(row).toHaveText('13');
+      await expect(row).toHaveAttribute('data-columns', /realization/);
+      await expect(row).toHaveAttribute('data-columns', /perceptiveOrganization/);
     }
 
     expect(snap.indicesShown, `${c.name} shows indices`).toBe(true);
     for (const chart of NEW_CHARTS) {
-      const canvas = page.getByTestId(chart);
-      await expect.poll(() => canvasInkRatio(canvas), { timeout: 15_000, message: `${c.name} ${chart}` }).toBeGreaterThanOrEqual(0.01);
+      const svg = page.getByTestId(chart);
+      await expect.poll(() => svgMarks(svg), { timeout: 15_000, message: `${c.name} ${chart}` }).toBeGreaterThan(0);
+      expect(await svgHasInk(svg), `${c.name} ${chart} drawn`).toBe(true);
     }
     expect(log.errors, `${c.name} console errors`).toEqual([]);
 

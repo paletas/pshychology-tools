@@ -52,6 +52,8 @@ export function readCells(page: Page): Promise<Record<string, string>> {
 export async function cellMismatches(page: Page, expected: Record<string, string>): Promise<string[]> {
   const actual = await readCells(page);
   return Object.entries(expected)
+    // [REV-12] index rows are not rendered while results-empty explains why: absent counts as blank
+    .filter(([k, v]) => !(actual[k] === undefined && k.startsWith('index-') && v.trim() === ''))
     .filter(([k, v]) => actual[k] === undefined || actual[k].trim() !== v.trim())
     .map(([k, v]) => `${k}: expected "${v}", got ${actual[k] === undefined ? 'missing' : `"${actual[k]}"`}`);
 }
