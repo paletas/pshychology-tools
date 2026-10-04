@@ -76,7 +76,7 @@ namespace Silvestre.Psychology.Tools.WISC3.Standardization.Standardizers.Portuga
                 2 => 7,
                 3 => 8,
                 4 => 9,
-                5 => 11,
+                5 => 10,
                 6 => 12,
                 7 => 14,
                 8 => 16,

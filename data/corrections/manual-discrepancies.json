@@ -1,0 +1,82 @@
+[
+  {
+    "id": "D1",
+    "table": "36",
+    "where": "Table 36, 6y0m, Comprehension raw 5",
+    "what": "app 11, manual 10",
+    "source": "WISC-III PT manual, Table 36",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D2",
+    "table": "36",
+    "where": "Table 36, 10y6m, Labyrinth raw 27",
+    "what": "app 17, manual 16",
+    "source": "WISC-III PT manual, Table 36",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D3",
+    "table": "36",
+    "where": "Table 36, 12y6m, Arithmetic raw 9-14",
+    "what": "app one higher than manual in each (app 5..10 vs manual 4..9)",
+    "source": "WISC-III PT manual, Table 36",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D4",
+    "table": "37",
+    "where": "Table 37 Verbal, sum 82",
+    "what": "percentile app 99.8, manual 99.7",
+    "source": "WISC-III PT manual, Table 37",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D5",
+    "table": "37",
+    "where": "Table 37 Verbal, sum 84",
+    "what": "percentile app 99.9, manual 99.8",
+    "source": "WISC-III PT manual, Table 37",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D6",
+    "table": "38",
+    "where": "Table 38 Realization, sum 63",
+    "what": "QI app 116, manual 118 (app is out of sequence)",
+    "source": "WISC-III PT manual, Table 38",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D7",
+    "table": "41",
+    "where": "Table 41 Perceptual Org., sums 25 and 26",
+    "what": "CI95 upper app 84 and 86, manual 87 and 87",
+    "source": "WISC-III PT manual, Table 41",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  },
+  {
+    "id": "D8",
+    "table": "41",
+    "where": "Table 41 Perceptual Org., sums 40-76",
+    "what": "CI95 lower bound app = CI90 lower, manual 1-2 lower (37 rows)",
+    "source": "WISC-III PT manual, Table 41",
+    "status": "resolved",
+    "resolvedBy": "data/corrections/wisc3-pt.json",
+    "approval": "user-approved 2026-10-03"
+  }
+]

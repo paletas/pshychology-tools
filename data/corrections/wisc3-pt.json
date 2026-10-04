@@ -1,0 +1,369 @@
+{
+  "schemaVersion": 2,
+  "corrections": [
+    {
+      "id": "C1",
+      "kind": "scaled",
+      "table": "36",
+      "band": "11y06m",
+      "test": "ImageDisposition",
+      "cells": [
+        {
+          "raw": 38,
+          "old": "throws",
+          "new": 13
+        }
+      ],
+      "equivalentRaw": 39,
+      "oldSource": "ElevenYearSixMonthLookupTable.cs:224",
+      "source": "WISC-III PT manual, Table 36 (11 1/2 anos)",
+      "approval": "user-confirmed 2026-10-03"
+    },
+    {
+      "id": "D1",
+      "kind": "scaled",
+      "table": "36",
+      "band": "06y00m",
+      "test": "Comprehension",
+      "cells": [
+        {
+          "raw": 5,
+          "old": 11,
+          "new": 10
+        }
+      ],
+      "oldSource": "SixYearLookupTable.cs:79",
+      "source": "WISC-III PT manual, Table 36 (6 anos)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D2",
+      "kind": "scaled",
+      "table": "36",
+      "band": "10y06m",
+      "test": "Labyrinth",
+      "cells": [
+        {
+          "raw": 27,
+          "old": 17,
+          "new": 16
+        }
+      ],
+      "oldSource": "TenYearSixMonthLookupTable.cs:284",
+      "source": "WISC-III PT manual, Table 36 (10 1/2 anos)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D3",
+      "kind": "scaled",
+      "table": "36",
+      "band": "12y06m",
+      "test": "Arithmetic",
+      "cells": [
+        {
+          "raw": 9,
+          "old": 5,
+          "new": 4
+        },
+        {
+          "raw": 10,
+          "old": 6,
+          "new": 5
+        },
+        {
+          "raw": 11,
+          "old": 7,
+          "new": 6
+        },
+        {
+          "raw": 12,
+          "old": 8,
+          "new": 7
+        },
+        {
+          "raw": 13,
+          "old": 9,
+          "new": 8
+        },
+        {
+          "raw": 14,
+          "old": 10,
+          "new": 9
+        }
+      ],
+      "oldSource": "TwelveYearSixMonthLookupTable.cs (Arithmetic)",
+      "source": "WISC-III PT manual, Table 36 (12 1/2 anos)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D4",
+      "kind": "index",
+      "table": "37",
+      "index": "verbal",
+      "field": "percentile",
+      "cells": [
+        {
+          "sum": 82,
+          "old": 99.8,
+          "new": 99.7
+        }
+      ],
+      "oldSource": "VerbalSubscale.cs",
+      "source": "WISC-III PT manual, Table 37 (Verbal)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D5",
+      "kind": "index",
+      "table": "37",
+      "index": "verbal",
+      "field": "percentile",
+      "cells": [
+        {
+          "sum": 84,
+          "old": 99.9,
+          "new": 99.8
+        }
+      ],
+      "oldSource": "VerbalSubscale.cs",
+      "source": "WISC-III PT manual, Table 37 (Verbal)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D6",
+      "kind": "index",
+      "table": "38",
+      "index": "realization",
+      "field": "iq",
+      "cells": [
+        {
+          "sum": 63,
+          "old": 116,
+          "new": 118
+        }
+      ],
+      "oldSource": "RealizationSubscale.cs",
+      "source": "WISC-III PT manual, Table 38 (Realizacao)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D7",
+      "kind": "index",
+      "table": "41",
+      "index": "perceptiveOrganization",
+      "field": "ci95Upper",
+      "cells": [
+        {
+          "sum": 25,
+          "old": 84,
+          "new": 87
+        },
+        {
+          "sum": 26,
+          "old": 86,
+          "new": 87
+        }
+      ],
+      "oldSource": "PerceptiveOrganizationSubscale.cs:31-32",
+      "source": "WISC-III PT manual, Table 41 (Organizacao Perceptiva)",
+      "approval": "user-approved 2026-10-03"
+    },
+    {
+      "id": "D8",
+      "kind": "index",
+      "table": "41",
+      "index": "perceptiveOrganization",
+      "field": "ci95Lower",
+      "cells": [
+        {
+          "sum": 40,
+          "old": 92,
+          "new": 91
+        },
+        {
+          "sum": 41,
+          "old": 93,
+          "new": 92
+        },
+        {
+          "sum": 42,
+          "old": 95,
+          "new": 93
+        },
+        {
+          "sum": 43,
+          "old": 96,
+          "new": 94
+        },
+        {
+          "sum": 44,
+          "old": 97,
+          "new": 96
+        },
+        {
+          "sum": 45,
+          "old": 98,
+          "new": 97
+        },
+        {
+          "sum": 46,
+          "old": 100,
+          "new": 99
+        },
+        {
+          "sum": 47,
+          "old": 102,
+          "new": 100
+        },
+        {
+          "sum": 48,
+          "old": 104,
+          "new": 102
+        },
+        {
+          "sum": 49,
+          "old": 104,
+          "new": 103
+        },
+        {
+          "sum": 50,
+          "old": 106,
+          "new": 105
+        },
+        {
+          "sum": 51,
+          "old": 107,
+          "new": 106
+        },
+        {
+          "sum": 52,
+          "old": 108,
+          "new": 106
+        },
+        {
+          "sum": 53,
+          "old": 110,
+          "new": 108
+        },
+        {
+          "sum": 54,
+          "old": 112,
+          "new": 111
+        },
+        {
+          "sum": 55,
+          "old": 114,
+          "new": 113
+        },
+        {
+          "sum": 56,
+          "old": 116,
+          "new": 114
+        },
+        {
+          "sum": 57,
+          "old": 117,
+          "new": 116
+        },
+        {
+          "sum": 58,
+          "old": 120,
+          "new": 119
+        },
+        {
+          "sum": 59,
+          "old": 122,
+          "new": 120
+        },
+        {
+          "sum": 60,
+          "old": 123,
+          "new": 121
+        },
+        {
+          "sum": 61,
+          "old": 124,
+          "new": 122
+        },
+        {
+          "sum": 62,
+          "old": 125,
+          "new": 124
+        },
+        {
+          "sum": 63,
+          "old": 126,
+          "new": 125
+        },
+        {
+          "sum": 64,
+          "old": 128,
+          "new": 126
+        },
+        {
+          "sum": 65,
+          "old": 129,
+          "new": 127
+        },
+        {
+          "sum": 66,
+          "old": 130,
+          "new": 128
+        },
+        {
+          "sum": 67,
+          "old": 130,
+          "new": 129
+        },
+        {
+          "sum": 68,
+          "old": 130,
+          "new": 129
+        },
+        {
+          "sum": 69,
+          "old": 131,
+          "new": 130
+        },
+        {
+          "sum": 70,
+          "old": 132,
+          "new": 131
+        },
+        {
+          "sum": 71,
+          "old": 133,
+          "new": 132
+        },
+        {
+          "sum": 72,
+          "old": 134,
+          "new": 133
+        },
+        {
+          "sum": 73,
+          "old": 135,
+          "new": 133
+        },
+        {
+          "sum": 74,
+          "old": 136,
+          "new": 134
+        },
+        {
+          "sum": 75,
+          "old": 136,
+          "new": 134
+        },
+        {
+          "sum": 76,
+          "old": 136,
+          "new": 134
+        }
+      ],
+      "oldSource": "PerceptiveOrganizationSubscale.cs:46-82",
+      "source": "WISC-III PT manual, Table 41 (Organizacao Perceptiva)",
+      "approval": "user-approved 2026-10-03"
+    }
+  ]
+}
