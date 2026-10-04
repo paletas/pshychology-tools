@@ -69,6 +69,7 @@ The new app has its own look, not a port of the old one: a top bar with the menu
 - Back to the old version: set `Legacy__Url` on the server (for example `http://127.0.0.1:5300/wisc3`); the page reads it from `/config.json` without a rebuild. Unset or invalid means no link; offline the link is disabled with a note. The comparison run leaves it unset.
 - Test ids the e2e readers rely on: `scaled-<Id>` (one value, `data-columns` lists the old columns it stands for), `age-years/months/days`, `oob-<Id>`, `raw-msg-<Id>`, `date-msg-<field>`, `index-row-<name>` (absent while `results-empty` explains why), `chart-standard/factorial/qi` (`data-marks`, QI also `data-y-min/max`), `chart-empty-<kind>`, `ci-select [data-ci]`, `lk-*` in the lookup dialog.
 - Charts: hovering, focusing (Tab, then the arrow keys) or tapping a point or bar shows its values in a tooltip, as the old app's charts did; the QI/index tooltip shows the result and both the 90% and 95% intervals.
+- Raw-score fields: boxed inputs (border contrast at least 3:1 in light and dark), a dash placeholder, a "Resultados Brutos" column header and the focus ring; the scaled score next to them stays unboxed and read-only.
 - Browser specs for it live in `tests/e2e/specs/ui` (initial state, input guards, out-of-bounds message, responsive, lookup, theme, legacy link) and run in the behaviour project.
 
 ### Intentional UI differences

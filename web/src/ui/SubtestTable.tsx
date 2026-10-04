@@ -44,6 +44,7 @@ export function SubtestTable({ data, snapshot, rawText, rawErrors, onRawText }: 
   return (
     <>
       <h2>{pt['TestsDescription']}</h2>
+      <div className="tests-head" data-testid="tests-head"><span /><span className="th-raw">{pt['TestsRawResults']}</span><span /></div>
       <ul className="tests">
         {data.tests.map((t) => {
           const s = snapshot.tests[t.id];
@@ -66,6 +67,7 @@ export function SubtestTable({ data, snapshot, rawText, rawErrors, onRawText }: 
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
+                placeholder="–"
                 data-testid={`raw-${t.id}`}
                 aria-label={fmt(ptNew['raw.aria'], name)}
                 aria-invalid={s.outOfBounds || rawError ? true : undefined}

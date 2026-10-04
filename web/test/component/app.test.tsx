@@ -6,6 +6,9 @@ import { App } from '../../src/App';
 import { installDebug } from '../../src/debug';
 import { scoreCase } from '../../src/engine/scoring';
 import { pt } from '../../src/i18n/pt';
+import { ptNew } from '../../src/i18n/pt-new';
+import { guardText } from '../../src/ui/guards/inputGuards';
+import { fmt } from '../../src/ui/template';
 import type { RefData } from '../../src/engine/types';
 import { parseBundle } from '../../src/refdata/schema';
 import { birthFor } from '../shared/load';
@@ -272,5 +275,58 @@ describe('App', () => {
     fireEvent.click(screen.getByTestId('print'));
     expect(spy).toHaveBeenCalledTimes(1);
     for (const k of [...COLUMNS, 'complete']) expect(screen.getByTestId(`sum-${k}`)).toBeTruthy();
+  });
+});
+
+describe('[REV-15] raw field affordance', () => {
+  it('13 boxed text inputs with the dash placeholder and an accessible name', async () => {
+    const errorSpy = vi.spyOn(console, 'error');
+    await renderApp();
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[data-testid^="raw-"]');
+    expect(inputs.length).toBe(13);
+    for (const el of inputs) {
+      const id = el.getAttribute('data-testid')!.slice('raw-'.length);
+      expect(el.getAttribute('type')).toBe('text');
+      expect(el.getAttribute('inputmode')).toBe('numeric');
+      expect(el.getAttribute('placeholder')).toBe('–');
+      expect(el.value).toBe('');
+      expect(screen.getByRole('textbox', { name: fmt(ptNew['raw.aria'], pt[`Test.${id}`]) })).toBe(el);
+    }
+    expect(errorSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it('the Resultados Brutos header comes before the list', async () => {
+    const errorSpy = vi.spyOn(console, 'error');
+    await renderApp();
+    const head = screen.getByTestId('tests-head');
+    expect(head.textContent).toBe(pt['TestsRawResults']);
+    const ul = document.querySelector('ul.tests')!;
+    expect(head.compareDocumentPosition(ul) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(errorSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it('the scaled cells are read-only spans, not inputs', async () => {
+    const errorSpy = vi.spyOn(console, 'error');
+    await renderApp();
+    const cells = document.querySelectorAll('[data-testid^="scaled-"]');
+    expect(cells.length).toBe(13);
+    for (const c of cells) {
+      expect(c.tagName).toBe('SPAN');
+      expect(c.hasAttribute('placeholder')).toBe(false);
+    }
+    expect(errorSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it('guard messages are unchanged (12.5 is still raw.invalid)', async () => {
+    const errorSpy = vi.spyOn(console, 'error');
+    await renderApp();
+    setAge([9, 3, 12]);
+    const first = document.querySelector<HTMLInputElement>('input[data-testid^="raw-"]')!;
+    const id = first.getAttribute('data-testid')!.slice('raw-'.length);
+    setRaw(id, '12.5');
+    const msg = screen.getByTestId(`raw-msg-${id}`);
+    expect(msg.getAttribute('data-key')).toBe('raw.invalid');
+    expect(msg.textContent).toContain(guardText('raw.invalid'));
+    expect(errorSpy).toHaveBeenCalledTimes(0);
   });
 });
