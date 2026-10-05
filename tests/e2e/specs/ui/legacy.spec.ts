@@ -18,9 +18,9 @@ async function ctxWithConfig(browser: Browser, body: unknown): Promise<BrowserCo
 test('unset (the real server here): no link', async ({ browser }) => {
   const context = await ctxWithConfig(browser, undefined);
   const page = await context.newPage();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
-  const cfg = await page.evaluate(() => fetch('/config.json').then((r) => r.json()));
+  const cfg = await page.evaluate(() => fetch('config.json').then((r) => r.json()));
   expect(cfg.legacyUrl ?? '').toBe('');
   await expect(page.getByTestId('legacy-link')).toHaveCount(0);
   await context.close();
@@ -30,7 +30,7 @@ for (const bad of ['', 'javascript:alert(1)', 'not a url']) {
   test(`config value ${JSON.stringify(bad)} shows no link`, async ({ browser }) => {
     const context = await ctxWithConfig(browser, { legacyUrl: bad });
     const page = await context.newPage();
-    await page.goto('/wisc3');
+    await page.goto('wisc3');
     await waitReady(page);
     await page.waitForTimeout(500);
     await expect(page.getByTestId('legacy-link')).toHaveCount(0);
@@ -43,7 +43,7 @@ test('configured: a real link that leaves the app; offline it is disabled with a
   await context.route(`${OLD}**`, (r) => r.fulfill({ contentType: 'text/html', body: '<title>old</title>' }));
   const page = await context.newPage();
   const log = collectErrors(page);
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
   const link = page.getByTestId('legacy-link');
   await expect(link).toBeVisible();
@@ -68,7 +68,7 @@ test('on a phone the link sits in the menu', async ({ browser }) => {
   const context = await ctxWithConfig(browser, { legacyUrl: OLD });
   const page = await context.newPage();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
   await expect(page.getByTestId('legacy-link')).toBeHidden();
   await page.locator('button.menu').click();

@@ -28,7 +28,7 @@ test.beforeEach(async ({ page, context }) => {
   });
   await page.clock.setFixedTime(new Date('2026-10-03T10:00:00'));
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
 });
 

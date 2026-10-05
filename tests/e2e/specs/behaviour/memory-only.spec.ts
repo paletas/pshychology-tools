@@ -15,7 +15,7 @@ test('C6 nothing about the child is stored or sent', async ({ browser }) => {
   const requests: { method: string; url: string }[] = [];
   context.on('request', (r) => requests.push({ method: r.method(), url: r.url() }));
   const page = await context.newPage();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitControlled(page);
   await waitReady(page);
 

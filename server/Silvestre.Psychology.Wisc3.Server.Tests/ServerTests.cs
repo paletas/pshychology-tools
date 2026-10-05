@@ -10,6 +10,10 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
 
     public ServerTests(ServerFixture fx) => _fx = fx;
 
+    // the manifest url is relative to the manifest's own URL
+    private static Uri BundleUri(HttpClient client, JsonElement m) =>
+        new(new Uri(client.BaseAddress!, "/api/reference/manifest"), m.GetProperty("url").GetString());
+
     private static async Task<JsonElement> ManifestAsync(HttpClient client)
     {
         var resp = await client.GetAsync("/api/reference/manifest");
@@ -29,7 +33,7 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
         Assert.Equal(1, m.GetProperty("schemaVersion").GetInt32());
         Assert.False(string.IsNullOrEmpty(m.GetProperty("dataVersion").GetString()));
         Assert.True(m.GetProperty("bytes").GetInt32() > 0);
-        Assert.Equal($"/api/reference/bundle/{sha}.json", m.GetProperty("url").GetString());
+        Assert.Equal($"bundle/{sha}.json", m.GetProperty("url").GetString());
         Assert.Equal($"\"{sha}\"", resp.Headers.ETag?.Tag);
 
         var req = new HttpRequestMessage(HttpMethod.Get, "/api/reference/manifest");
@@ -43,7 +47,7 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
     {
         var client = _fx.CreateClient();
         var m = await ManifestAsync(client);
-        var resp = await client.GetAsync(m.GetProperty("url").GetString());
+        var resp = await client.GetAsync(BundleUri(client, m));
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         Assert.Equal("application/json", resp.Content.Headers.ContentType?.MediaType);
         Assert.Contains("immutable", resp.Headers.CacheControl!.ToString());
@@ -60,7 +64,7 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
     {
         var client = _fx.CreateClient();
         var m = await ManifestAsync(client);
-        var text = await client.GetStringAsync(m.GetProperty("url").GetString());
+        var text = await client.GetStringAsync(BundleUri(client, m));
         var start = text.IndexOf("\"completeScale\":{", StringComparison.Ordinal);
         Assert.True(start >= 0);
         var segment = text[start..];
@@ -109,7 +113,9 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
         var client = _fx.CreateClient();
         var root = await client.GetAsync("/");
         Assert.Equal(HttpStatusCode.Redirect, root.StatusCode);
-        Assert.Equal("/wisc3", root.Headers.Location?.OriginalString);
+        Assert.Equal("wisc3", root.Headers.Location?.OriginalString);
+        // behind Traefik stripprefix /new the browser resolves it against /new/
+        Assert.Equal("/new/wisc3", new Uri(new Uri("http://x/new/"), root.Headers.Location).AbsolutePath);
 
         var spa = await client.GetAsync("/wisc3");
         Assert.Equal(HttpStatusCode.OK, spa.StatusCode);

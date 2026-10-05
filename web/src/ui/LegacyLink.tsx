@@ -38,7 +38,7 @@ export function LegacyLink() {
     if (asked.current) return;
     asked.current = true;
     let alive = true;
-    fetch('/config.json')
+    fetch('config.json')
       .then((r) => (r.ok ? r.json() : null))
       .then((c: { legacyUrl?: unknown } | null) => alive && setUrl(parseLegacyUrl(c?.legacyUrl)))
       .catch(() => {});

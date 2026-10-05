@@ -13,7 +13,7 @@ test('C3 update banner, no automatic reload, one reload on click', async ({ brow
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitControlled(page);
   await waitReady(page);
 

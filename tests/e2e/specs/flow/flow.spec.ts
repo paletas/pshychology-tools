@@ -22,7 +22,7 @@ test('C7 flow: six cases, cells, charts, no console errors', async ({ browser },
   await blockAds(context);
   const page = await context.newPage();
   const log = collectErrors(page);
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitControlled(page);
   await waitReady(page);
 

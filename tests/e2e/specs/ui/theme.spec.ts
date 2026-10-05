@@ -9,7 +9,7 @@ test('system dark by default, toggle writes only the wisc3-theme cookie, reload 
   await blockAds(context);
   const page = await context.newPage();
   const log = collectErrors(page);
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
 
   const toggle = page.getByTestId('theme-toggle');
@@ -48,7 +48,7 @@ test('an invalid cookie value is ignored', async ({ browser }) => {
   await blockAds(context);
   await context.addCookies([{ name: 'wisc3-theme', value: 'purple', url: 'http://localhost:5201/' }]);
   const page = await context.newPage();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
   await expect(page.getByTestId('theme-toggle')).toHaveAttribute('aria-pressed', 'false');
   expect(await page.evaluate(() => document.documentElement.dataset.theme ?? '')).not.toBe('purple');

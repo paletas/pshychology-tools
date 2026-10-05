@@ -164,7 +164,7 @@ describe('LegacyLink', () => {
     expect(screen.getByTestId('legacy-link').tagName).toBe('A');
     expect(screen.queryByTestId('legacy-offline')).toBeNull();
     expect(f).toHaveBeenCalledTimes(1);
-    expect(f).toHaveBeenCalledWith('/config.json');
+    expect(f).toHaveBeenCalledWith('config.json');
   });
 
   it('does not block the page: children render while the fetch is pending', () => {

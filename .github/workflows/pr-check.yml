@@ -38,6 +38,121 @@ jobs:
           echo "GET / -> $code ($bytes bytes)"
           [ "$code" = 200 ] && [ "$bytes" -gt 200 ]
 
+      - name: Banner off by default
+        run: |
+          curl -s http://localhost:8080/wisc3 -o /tmp/off.html
+          ! grep -q 'data-testid="new-app-banner"' /tmp/off.html
+
+      - name: Banner on with NewApp__Url
+        run: |
+          docker run -d --name smoke-banner -e ASPNETCORE_ENVIRONMENT=Production -e ASPNETCORE_URLS=http://+:80 -e NewApp__Url=/new/wisc3 -p 8082:80 smoke:webapp
+          code=000
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /tmp/on.html -w '%{http_code}' http://localhost:8082/wisc3 || true)
+            [ "$code" = 200 ] && break
+            sleep 2
+          done
+          [ "$code" = 200 ]
+          # ASCII only: the static renderer may HTML-encode accents; exact wording is asserted in switch.spec
+          for s in 'data-testid="new-app-banner"' 'href="/new/wisc3"' 'data-enhance-nav="false"' 'calculadora WISC-III' '>Fechar<'; do
+            grep -qF -- "$s" /tmp/on.html || { echo "missing: $s"; exit 1; }
+          done
+
       - name: Container logs
         if: failure()
         run: docker logs smoke || true
+
+  tag-guard:
+    name: tag guard (old 1.x, new >= 2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check version majors
+        run: |
+          OLD=$(grep -oPm1 '(?<=<Version>)[^<]+' src/Silvestre.Psychology.Tools.WISC3.WebComponent/Silvestre.Psychology.Tools.WISC3.WebComponent.csproj)
+          NEW=$(grep -oPm1 '(?<=<Version>)[^<]+' server/Silvestre.Psychology.Wisc3.Server/Silvestre.Psychology.Wisc3.Server.csproj)
+          echo "old=$OLD new=$NEW"
+          [ "${OLD%%.*}" -eq 1 ] || { echo "::error::old app major must be 1"; exit 1; }
+          [ "${NEW%%.*}" -ge 2 ] || { echo "::error::new app major must be >= 2"; exit 1; }
+
+  smoke-next:
+    name: build + smoke (wisc3 next, root and /new)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build -f server/Silvestre.Psychology.Wisc3.Server/Dockerfile -t smoke:next .
+
+      - name: Start next + traefik
+        run: |
+          docker network create smoke
+          docker run -d --name next --network smoke -p 8081:8080 -e Legacy__Url=https://psy.itssilvestre.com/wisc3 smoke:next
+          docker run -d --name traefik --network smoke -p 8090:80 -v "$PWD/.github/smoke/traefik-next.yml:/etc/traefik/dyn.yml:ro" traefik:v2.9 --entrypoints.web.address=:80 --providers.file.filename=/etc/traefik/dyn.yml
+          body=
+          for i in $(seq 1 30); do
+            body=$(curl -s http://localhost:8081/healthz || true)
+            [ "$body" = ok ] && break
+            sleep 2
+          done
+          [ "$body" = ok ]
+
+      - name: Root checks
+        run: |
+          set -e
+          h=$(curl -s -D - -o /dev/null http://localhost:8081/)
+          echo "$h" | head -1 | grep -q ' 302'
+          echo "$h" | tr -d '\r' | grep -iE '^location: wisc3$'
+          [ "$(curl -s -o /tmp/r.html -w '%{http_code}' http://localhost:8081/wisc3)" = 200 ]
+          grep -qF '<div id="root">' /tmp/r.html
+          curl -s http://localhost:8081/config.json | grep -qF '"legacyUrl":"https://psy.itssilvestre.com/wisc3"'
+          [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/service-worker.js)" = 200 ]
+
+      - name: Prefix checks (through traefik)
+        run: |
+          set -e
+          B=http://localhost:8090
+          H='Host: psy.itssilvestre.com'
+          fail() { echo "FAIL: $*"; exit 1; }
+          # traefik loads the file provider after the container starts: wait for the route
+          code=
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" $B/new/wisc3 || true)
+            [ "$code" = 200 ] && break
+            sleep 2
+          done
+          [ "$code" = 200 ] || fail "route not ready, /new/wisc3 -> $code"
+          for p in /new /new/; do
+            h=$(curl -s -D - -o /dev/null -H "$H" "$B$p" | tr -d '\r')
+            echo "$h" | head -1 | grep -q ' 302' || fail "$p expected 302, got: $(echo "$h" | head -1)"
+            echo "$h" | grep -iE '^location: http://psy\.itssilvestre\.com/new/wisc3$' || fail "$p bad location, headers: $h"
+          done
+          curl -s -o /tmp/p.html -H "$H" $B/new/wisc3
+          grep -qF '<div id="root">' /tmp/p.html || fail "no root div in /new/wisc3: $(head -c 300 /tmp/p.html)"
+          assets=$(grep -oE '(src|href)="\./assets/[^"]+"' /tmp/p.html | sed -E 's/^(src|href)="\.\///; s/"$//')
+          [ -n "$assets" ] || fail "no ./assets/ refs in /new/wisc3"
+          for a in $assets; do
+            h=$(curl -s -D - -o /dev/null -H "$H" "$B/new/$a" | tr -d '\r')
+            echo "$h" | head -1 | grep -q ' 200' || fail "asset $a: $(echo "$h" | head -1)"
+            echo "$h" | grep -i '^cache-control:' | grep -qi immutable || fail "asset $a not immutable: $h"
+          done
+          h=$(curl -s -D - -o /dev/null -H "$H" $B/new/service-worker.js | tr -d '\r')
+          echo "$h" | head -1 | grep -q ' 200' || fail "service-worker: $(echo "$h" | head -1)"
+          echo "$h" | grep -i '^cache-control:' | grep -qi 'no-cache' || fail "service-worker cache-control: $h"
+          ! curl -s -H "$H" $B/new/manifest.json | grep -q '"id"' || fail "/new/manifest.json has an id"
+          url=$(curl -s -H "$H" $B/new/api/reference/manifest | sed -E 's/.*"url":"([^"]+)".*/\1/')
+          echo "bundle url: $url"
+          case "$url" in bundle/*.json) ;; *) fail "unexpected bundle url: $url";; esac
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$B/new/api/reference/$url")
+          [ "$code" = 200 ] || fail "bundle $url -> $code"
+          code=$(curl -s -o /tmp/x.html -w '%{http_code}' -H "$H" $B/newx)
+          [ "$code" = 404 ] || fail "/newx expected 404, got $code"
+          ! grep -qF '<div id="root">' /tmp/x.html || fail "/newx served the SPA"
+
+      - name: Container logs
+        if: failure()
+        run: |
+          docker logs next || true
+          docker logs traefik || true

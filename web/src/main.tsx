@@ -10,7 +10,7 @@ installDebug();
 
 let swUpdate: SwUpdate | undefined;
 if ('serviceWorker' in navigator) {
-  const wb = new Workbox('/service-worker.js', { scope: '/' });
+  const wb = new Workbox('service-worker.js');
   const listeners: Array<() => void> = [];
   let waiting = false;
   let reloadRequested = false;

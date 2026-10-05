@@ -9,7 +9,7 @@ test('oob-<Id> is absent before input and shown only for the out-of-bounds row',
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
 
   await expect(page.locator('[data-testid^="subtest-row-"]')).toHaveCount(13);
