@@ -281,7 +281,7 @@ namespace Silvestre.Psychology.Tools.WISC3.Standardization.Standardizers.Portuga
                 24 => 13,
                 25 => 14,
                 26 => 15,
-                27 => 17,
+                27 => 16,
                 28 => 18,
                 _ => throw new ArgumentOutOfRangeException(nameof(rawResult), $"'{rawResult}' is outside of the supported values."),
             };

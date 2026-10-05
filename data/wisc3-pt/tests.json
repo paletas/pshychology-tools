@@ -1,0 +1,103 @@
+[
+  {
+    "id": "ImageCompletion",
+    "mandatory": true,
+    "columns": [
+      "realization",
+      "perceptiveOrganization"
+    ]
+  },
+  {
+    "id": "Information",
+    "mandatory": true,
+    "columns": [
+      "verbal",
+      "verbalComprehension"
+    ]
+  },
+  {
+    "id": "Code",
+    "mandatory": true,
+    "columns": [
+      "realization",
+      "processingVelocity"
+    ]
+  },
+  {
+    "id": "Similarities",
+    "mandatory": true,
+    "columns": [
+      "verbal",
+      "verbalComprehension"
+    ]
+  },
+  {
+    "id": "ImageDisposition",
+    "mandatory": true,
+    "columns": [
+      "realization",
+      "perceptiveOrganization"
+    ]
+  },
+  {
+    "id": "Arithmetic",
+    "mandatory": true,
+    "columns": [
+      "verbal"
+    ]
+  },
+  {
+    "id": "Cubes",
+    "mandatory": true,
+    "columns": [
+      "realization",
+      "perceptiveOrganization"
+    ]
+  },
+  {
+    "id": "Vocabulary",
+    "mandatory": true,
+    "columns": [
+      "verbal",
+      "verbalComprehension"
+    ]
+  },
+  {
+    "id": "ObjectComposition",
+    "mandatory": true,
+    "columns": [
+      "realization",
+      "perceptiveOrganization"
+    ]
+  },
+  {
+    "id": "Comprehension",
+    "mandatory": true,
+    "columns": [
+      "verbal",
+      "verbalComprehension"
+    ]
+  },
+  {
+    "id": "SymbolSearch",
+    "mandatory": false,
+    "columns": [
+      "realization",
+      "processingVelocity"
+    ]
+  },
+  {
+    "id": "DigitMemory",
+    "mandatory": false,
+    "columns": [
+      "verbal"
+    ]
+  },
+  {
+    "id": "Labyrinth",
+    "mandatory": false,
+    "columns": [
+      "realization"
+    ]
+  }
+]

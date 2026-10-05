@@ -348,3 +348,14 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# wisc3-next
+web/node_modules/
+web/dist/
+web/public/reference/
+tests/e2e/node_modules/
+tests/e2e/.tmp/
+tests/e2e/reports/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+tools/Wisc3.Oracle/golden/scenarios.json
