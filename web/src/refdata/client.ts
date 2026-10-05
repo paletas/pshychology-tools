@@ -3,9 +3,14 @@ import { parseBundle, SCHEMA_VERSION } from './schema';
 import { deleteBundle, openStore, readActive, writeActive } from './store';
 import type { RefStore } from './store';
 
-const BASELINE_URL = '/reference/baseline.json';
-const MANIFEST_URL = '/api/reference/manifest';
+const BASELINE_URL = 'reference/baseline.json';
+const MANIFEST_URL = 'api/reference/manifest';
 const TIMEOUT_MS = 10_000;
+
+/** Resolves a bundle URL from the manifest (relative or absolute) against the manifest URL and the page base. */
+export function resolveBundleUrl(manifestUrl: string, bundleUrl: string): string {
+  return new URL(bundleUrl, new URL(manifestUrl, document.baseURI)).href;
+}
 
 export interface Loaded {
   data: RefData;
@@ -74,7 +79,7 @@ async function checkForUpdate(db: RefStore, active: string | null): Promise<void
       url: string;
     };
     if (manifest.schemaVersion !== SCHEMA_VERSION || manifest.sha256 === active) return;
-    const bundle = await fetchBundle(manifest.url);
+    const bundle = await fetchBundle(resolveBundleUrl(MANIFEST_URL, manifest.url));
     if (bundle.sha !== manifest.sha256) throw new Error('bundle hash mismatch');
     const data = parseBundle(bundle.text);
     await writeActive(db, bundle.sha, bundle.text);

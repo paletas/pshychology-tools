@@ -31,7 +31,7 @@ async function startOnline(browser: import('@playwright/test').Browser, opts: { 
   const context = await browser.newContext(opts.block ? { serviceWorkers: 'block' } : {});
   await blockAds(context);
   const page = await context.newPage();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   if (!opts.block) await waitControlled(page);
   await waitReady(page);
   return { context, page };
@@ -94,8 +94,10 @@ test('C2 bundle with invalid schema is rejected', async ({ browser }) => {
   const oldVersion = (await debugState(page)).dataVersion!;
 
   // a bundle whose sha matches its body but which lacks `indices`
-  const manifest = await (await page.request.get('/api/reference/manifest')).json();
-  const bundle = await (await page.request.get(manifest.url)).json();
+  const manifestRes = await page.request.get('api/reference/manifest');
+  const manifest = await manifestRes.json();
+  // manifest.url is relative to the manifest URL
+  const bundle = await (await page.request.get(new URL(manifest.url, manifestRes.url()).href)).json();
   delete bundle.indices;
   bundle.dataVersion = NEW_VERSION;
   const body = JSON.stringify(bundle);
@@ -103,7 +105,7 @@ test('C2 bundle with invalid schema is rejected', async ({ browser }) => {
   let hit = false;
   await page.route('**/api/reference/manifest', (route) =>
     route.fulfill({
-      json: { schemaVersion: 1, dataVersion: NEW_VERSION, sha256: sha, bytes: Buffer.byteLength(body), url: `/api/reference/bundle/${sha}.json` },
+      json: { schemaVersion: 1, dataVersion: NEW_VERSION, sha256: sha, bytes: Buffer.byteLength(body), url: `bundle/${sha}.json` },
     }),
   );
   await page.route(`**/api/reference/bundle/${sha}.json`, (route) => {

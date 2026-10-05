@@ -1,0 +1,23 @@
+# CI smoke routing for the wisc3 next image.
+# keep in sync with HomeLab roles/htz_server/templates/psychology-next.compose.yml.j2 (labels use $$)
+http:
+  routers:
+    psytoolsnext:
+      rule: "Host(`psy.itssilvestre.com`) && (Path(`/new`) || PathPrefix(`/new/`))"
+      priority: 100
+      entryPoints: [web]
+      middlewares: [psytoolsnext-home, psytoolsnext-strip]
+      service: psytoolsnext
+  middlewares:
+    psytoolsnext-home:
+      redirectRegex:
+        regex: '^(https?://[^/]+)/new/?$'
+        replacement: '${1}/new/wisc3'
+    psytoolsnext-strip:
+      stripPrefix:
+        prefixes: ["/new"]
+  services:
+    psytoolsnext:
+      loadBalancer:
+        servers:
+          - url: http://next:8080

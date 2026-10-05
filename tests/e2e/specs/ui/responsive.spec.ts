@@ -147,7 +147,7 @@ for (const { w, h } of WIDTHS) {
       await blockAds(context);
       const page = await context.newPage();
       const log = collectErrors(page);
-      await page.goto('/wisc3');
+      await page.goto('wisc3');
       await waitReady(page);
       await fillCase(page, midCase(refData()).input);
       await expect(page.locator('[data-testid^="index-row-"]')).toHaveCount(6);
@@ -261,7 +261,7 @@ for (const { name, w, h } of PAPER) {
       await blockAds(context);
       const page = await context.newPage();
       const log = collectErrors(page);
-      await page.goto('/wisc3');
+      await page.goto('wisc3');
       await waitReady(page);
       await fillCase(page, midCase(refData()).input);
       await expect(page.locator('svg[data-testid^="chart-"]')).toHaveCount(3);

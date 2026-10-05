@@ -11,7 +11,7 @@ test('C1 offline reload scores a full case', async ({ browser }) => {
   await blockAds(context);
   const page = await context.newPage();
 
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitControlled(page);
   await waitReady(page);
 

@@ -21,13 +21,13 @@ test('C4 new service worker takes over from the old stub', async ({ browser }) =
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
 
   resetTmp();
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
 
   await expect
     .poll(
       () =>
         page.evaluate(async () => ({
-          meta: await caches.has('wisc3-meta'),
+          meta: await caches.has('wisc3-meta-' + location.origin + '/'),
           controller: !!navigator.serviceWorker.controller,
           keys: await caches.keys(),
         })),

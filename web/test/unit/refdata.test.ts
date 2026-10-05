@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // @ts-expect-error plain .mjs without types
 import { buildBundle, canonical, sha256Hex } from '../../scripts/canonical.mjs';
-import { initReferenceData, takePending } from '../../src/refdata/client';
+import { initReferenceData, resolveBundleUrl, takePending } from '../../src/refdata/client';
 import { dataDir } from '../shared/load';
 
 const baselineBytes: Buffer = buildBundle(dataDir);
@@ -17,8 +17,14 @@ function variant(mutate: (b: any) => void): { bytes: Buffer; sha: string } {
 }
 
 const bytesResponse = (b: Buffer) => new Response(new Uint8Array(b));
+// Requests are matched by pathname (the client fetches relative URLs). Manifests carry the relative form the server sends.
+const pathOf = (url: string) => new URL(url, document.baseURI).pathname;
 const manifestFor = (sha: string, url: string, schemaVersion = 1) =>
-  new Response(JSON.stringify({ schemaVersion, dataVersion: 'x', sha256: sha, bytes: 1, url }));
+  new Response(
+    JSON.stringify({ schemaVersion, dataVersion: 'x', sha256: sha, bytes: 1, url: url.replace('/api/reference/', '') }),
+  );
+const manifestForAbsolute = (sha: string, url: string) =>
+  new Response(JSON.stringify({ schemaVersion: 1, dataVersion: 'x', sha256: sha, bytes: 1, url }));
 
 let routes: Record<string, () => Response | Promise<Response>>;
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -39,7 +45,7 @@ beforeEach(() => {
   setOnline(true);
   routes = { '/reference/baseline.json': () => bytesResponse(baselineBytes) };
   fetchMock = vi.fn(async (url: string) => {
-    const route = routes[url];
+    const route = routes[pathOf(url)];
     if (!route) throw new Error(`unexpected fetch ${url}`);
     return route();
   });
@@ -52,7 +58,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const calls = (url: string) => fetchMock.mock.calls.filter((c) => c[0] === url).length;
+const calls = (url: string) => fetchMock.mock.calls.filter((c) => pathOf(c[0]) === url).length;
 
 describe('reference data client', () => {
   it('seeds an empty IDB from the baseline', async () => {
@@ -73,6 +79,17 @@ describe('reference data client', () => {
     expect(calls('/api/reference/manifest')).toBe(1);
     expect(calls(`/api/reference/bundle/${baselineSha}.json`)).toBe(0);
     expect(takePending()).toBeNull();
+  });
+
+  it('also accepts an absolute bundle url in the manifest', async () => {
+    const next = variant((b) => { b.dataVersion = 'abs-version'; });
+    const url = `/api/reference/bundle/${next.sha}.json`;
+    routes['/api/reference/manifest'] = () => manifestForAbsolute(next.sha, url);
+    routes[url] = () => bytesResponse(next.bytes);
+    const h = await initReferenceData();
+    await h.updated;
+    expect(calls(url)).toBe(1);
+    expect((await idbEntries()).active).toBe(next.sha);
   });
 
   it('stores a newer bundle, sets pending, and keeps current until takePending()', async () => {
@@ -135,6 +152,18 @@ describe('reference data client', () => {
     const h = await initReferenceData();
     await h.updated;
     expect(calls('/api/reference/manifest')).toBe(0);
-    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual(['/reference/baseline.json']);
+    expect(fetchMock.mock.calls.map((c) => pathOf(c[0]))).toEqual(['/reference/baseline.json']);
+  });
+});
+
+describe('resolveBundleUrl', () => {
+  it('resolves relative and absolute references against the page base', () => {
+    history.pushState({}, '', '/new/wisc3');
+    try {
+      expect(resolveBundleUrl('api/reference/manifest', 'bundle/x.json')).toBe(`${location.origin}/new/api/reference/bundle/x.json`);
+      expect(resolveBundleUrl('api/reference/manifest', '/api/reference/bundle/x.json')).toBe(`${location.origin}/api/reference/bundle/x.json`);
+    } finally {
+      history.pushState({}, '', '/');
+    }
   });
 });

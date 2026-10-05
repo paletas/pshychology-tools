@@ -105,7 +105,7 @@ async function open(browser: Browser, opts: Parameters<Browser['newContext']>[0]
   await blockAds(context);
   const page = await context.newPage();
   const log = collectErrors(page);
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitReady(page);
   if (withInput) await fillCase(page, midCase(refData()).input);
   return { context, page, log };

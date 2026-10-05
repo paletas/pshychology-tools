@@ -16,7 +16,7 @@ test('C5 no cross-origin response comes from the service worker; offline reload 
   });
   page.on('pageerror', (e) => pageErrors.push(e.message));
 
-  await page.goto('/wisc3');
+  await page.goto('wisc3');
   await waitControlled(page);
   await page.reload(); // now every request goes through the controlled page
   await waitReady(page);

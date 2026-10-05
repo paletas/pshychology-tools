@@ -2,6 +2,7 @@
 @inherits LayoutComponentBase
 
 @inject PsychologyToolsViewModel ViewModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 
 <div class="relative min-h-screen">
   <nav class="bg-gray-800">
@@ -54,6 +55,15 @@
       </div>
     </div>
   </nav>
+
+  @{ var newAppUrl = Configuration["NewApp:Url"]?.Trim(); }
+  @if (!string.IsNullOrEmpty(newAppUrl))
+  {
+    <div data-testid="new-app-banner" role="region" aria-label="Nova versão" class="flex items-center justify-between px-4 py-2 text-sm text-white" style="background-color:#3730a3;gap:1rem;">
+      <p>Está disponível uma nova versão da calculadora WISC-III, que também funciona sem ligação à internet. Esta versão continua disponível. <a href="@newAppUrl" data-enhance-nav="false" class="font-medium underline text-white">Experimentar a nova versão</a></p>
+      <button type="button" aria-label="Fechar aviso" class="font-medium underline text-white" onclick="this.closest('[data-testid=new-app-banner]').remove()">Fechar</button>
+    </div>
+  }
 
   <header class="bg-white shadow">
     <div class="max-w-screen-2xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
