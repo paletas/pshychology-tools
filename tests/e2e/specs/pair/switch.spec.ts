@@ -35,7 +35,7 @@ async function assertAppId(page: Page, origin: string): Promise<void> {
   }
 }
 
-test('old -> new -> old', async ({ browser, baseURL }) => {
+test('old -> new -> old', async ({ browser, baseURL }, testInfo) => {
   const origin = originOf(baseURL);
   const context = await browser.newContext();
   await blockAds(context);
@@ -60,6 +60,12 @@ test('old -> new -> old', async ({ browser, baseURL }) => {
   const keys = await page.evaluate(() => caches.keys());
   for (const k of oldCaches) expect(keys).toContain(k);
 
+  if (testInfo.project.name === 'phone') {
+    // below 640 px the new app's nav (with "Versão anterior") sits behind the Menu button (web/src/index.css:57)
+    await page.locator('button.menu').click();
+    await expect(page.locator('button.menu')).toHaveAttribute('aria-expanded', 'true');
+  }
+  await expect(page.getByTestId('legacy-link')).toBeVisible();
   await page.getByTestId('legacy-link').click();
   await page.waitForURL(`${origin}/wisc3`);
   await expect(page.locator(BANNER)).toBeVisible();

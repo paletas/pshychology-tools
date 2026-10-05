@@ -1,0 +1,52 @@
+name: Build and publish docker image - wisc3 next
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions: { contents: read, packages: write }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Build the Docker image
+      run: |
+        VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' server/Silvestre.Psychology.Wisc3.Server/Silvestre.Psychology.Wisc3.Server.csproj)
+        [ "${VERSION%%.*}" -ge 2 ] || { echo "::error::new app major must be >= 2 (1.x belongs to the old app)"; exit 1; }
+        SHOULD_PUBLISH='true'
+        VERSION_SUFFIX=""
+        if [[ "$GITHUB_REF" == refs/heads/* ]]; then
+          if [ "$GITHUB_REF_NAME" == "main" ]; then
+            VERSION_SUFFIX=""
+          elif [ "$GITHUB_REF_NAME" == "dev" ]; then
+            VERSION_SUFFIX="-dev"
+          else
+            SHOULD_PUBLISH='false'
+          fi
+        else
+          SHOULD_PUBLISH='false'
+        fi
+        SHORT=${GITHUB_SHA::7}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
+        echo "SHOULD_PUBLISH=$SHOULD_PUBLISH" >> $GITHUB_ENV
+        echo "SHORT=$SHORT" >> $GITHUB_ENV
+        docker build -f server/Silvestre.Psychology.Wisc3.Server/Dockerfile \
+          --label org.opencontainers.image.source=https://github.com/paletas/pshychology-tools \
+          --label org.opencontainers.image.version=$VERSION \
+          --tag "ghcr.io/paletas/pshychology-tools-wisc3:${VERSION}${VERSION_SUFFIX}" \
+          --tag "ghcr.io/paletas/pshychology-tools-wisc3:$(cut -d. -f1,2 <<<"$VERSION")${VERSION_SUFFIX}" \
+          --tag "ghcr.io/paletas/pshychology-tools-wisc3:sha-${SHORT}" \
+          .
+    - name: Log into GitHub Container Registry
+      if: env.SHOULD_PUBLISH == 'true'
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Push Docker image
+      if: env.SHOULD_PUBLISH == 'true'
+      run: |
+        docker push "ghcr.io/paletas/pshychology-tools-wisc3:${VERSION}${VERSION_SUFFIX}"
+        docker push "ghcr.io/paletas/pshychology-tools-wisc3:$(cut -d. -f1,2 <<<"$VERSION")${VERSION_SUFFIX}"
+        docker push "ghcr.io/paletas/pshychology-tools-wisc3:sha-${SHORT}"

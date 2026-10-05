@@ -3,7 +3,7 @@ Automating some gruesome test evaluations still done by hand
 
 ## WISC-III next (offline PWA)
 
-A rewrite of the WISC-III calculator as an offline-capable PWA, built next to the old Blazor app (which is untouched).
+A rewrite of the WISC-III calculator as an offline-capable PWA, built next to the old Blazor app (changed only by the new-version banner, see Deploy).
 
 ### Layout
 - `web/`: Vite + React + TypeScript PWA (the product), with the scoring engine in `web/src/engine`.
@@ -32,6 +32,19 @@ Quick check: `curl -I http://localhost:5200/wisc3` (HEAD is supported). Open htt
 cd tests/e2e && npm run old:publish
 cd .tmp/old-publish && dotnet Silvestre.Psychology.Tools.WebApp.dll --urls http://localhost:5100
 ```
+
+### Deploy (production)
+- Image: `ghcr.io/paletas/pshychology-tools-wisc3`. The new app (2.x) is built by `.github/workflows/wisc3-next-image.yml` from `server/Silvestre.Psychology.Wisc3.Server/Dockerfile` (tags `X.Y.Z`, `X.Y`, `sha-<short>`; `-dev` suffix from `dev`). The old app (1.x) keeps its existing workflow. The `tag guard` job in `pr-check` requires old major = 1 and new major >= 2.
+- Env of the new image: `Spa__Root`, `ReferenceData__Path`, `Legacy__Url` (link back to the old app), port 8080, runs non-root.
+- Phase 1 on `psy.`: the new app is served at `/new` behind Traefik (stripprefix, plus a redirect of bare `/new` to `/new/wisc3`); the old app stays at `/` and shows a banner linking to the new one when `NewApp__Url` is set.
+- Local checks: `npm run test:prefix` (the build under `/new/` behind `prefix-proxy.mjs`), `npm run test:pair` (old and new app side by side, switching both ways), `npm run test:prod` (read-only, against production). All run in `tests/e2e`.
+
+#### Later switch (phase 2, not done)
+- The same image serves `/`: only the Traefik labels change (a router on `Host(psy.)` without strip).
+- The old app moves to `/legacy`, which needs the `UsePathBase` + base-href host change.
+- The SW meta/config caches are scope-keyed and foreign-cache cleanup runs only at scope `/`, so the root SW still takes over the old stub at once (`stub-takeover.spec`).
+- The manifest id follows the base (`/new/wisc3` now, `/wisc3` after the switch).
+- Also needed: a Cloudflare purge, a `/new` -> `/` redirect plus a self-unregistering `/new/service-worker.js`, and the banner retargeted or removed.
 
 ### Tests
 - Web: `cd web && npm test` (also `npm run typecheck`).
