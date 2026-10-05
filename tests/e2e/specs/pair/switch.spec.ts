@@ -21,15 +21,33 @@ async function waitOldBlazor(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as any).Blazor, undefined, { timeout: 60_000 });
 }
 
+// the old form is InteractiveWebAssembly: window.Blazor exists before the runtime boots, dates typed earlier are lost
+async function enterOldDates(page: Page, testDate: string, birthDate: string): Promise<void> {
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    await page.locator('#testDate').fill(testDate);
+    await page.locator('#testDate').press('Tab');
+    await page.locator('#subjectBirthday').fill(birthDate);
+    await page.locator('#subjectBirthday').press('Tab');
+    const t = Date.now() + 3_000;
+    while (Date.now() < t) {
+      if ((await page.locator('#subjectAgeYear').inputValue()) !== '') return;
+      await page.waitForTimeout(100);
+    }
+  }
+}
+
 async function assertAppId(page: Page, origin: string): Promise<void> {
   const cdp = await page.context().newCDPSession(page);
   const { appId } = await cdp.send('Page.getAppId');
+  console.log(`appId: ${appId || '(empty, manifest fallback)'}`);
   if (appId) {
     expect(appId).toBe(`${origin}/new/wisc3`);
   } else {
     const { url, data } = await cdp.send('Page.getAppManifest', {});
     expect(url).toMatch(/\/new\/manifest\.json$/);
     const manifest = JSON.parse(data ?? '{}');
+    console.log(`manifest: ${url} start_url=${manifest.start_url} id=${manifest.id}`);
     expect(manifest.id).toBeUndefined();
     expect(manifest.start_url).toBe('wisc3');
   }
@@ -94,10 +112,7 @@ test('old app shows corrected cell C1', async ({ browser }, testInfo) => {
   const page = await context.newPage();
   await page.goto('wisc3');
   await waitOldBlazor(page);
-  await page.locator('#testDate').fill('2026-10-04');
-  await page.locator('#testDate').press('Tab');
-  await page.locator('#subjectBirthday').fill('2015-04-04');
-  await page.locator('#subjectBirthday').press('Tab');
+  await enterOldDates(page, '2026-10-04', '2015-04-04');
   await expect(page.locator('#subjectAgeYear')).toHaveValue('11');
   const table = page.locator('table:not(#LookupTableVisualizer table)').first();
   const row = table
@@ -119,13 +134,20 @@ test('new app App ID and no request outside /new/', async ({ browser, baseURL })
   await blockAds(context);
   const page = await context.newPage();
   const outside: string[] = [];
+  const edge: string[] = [];
   page.on('request', (r) => {
     const u = new URL(r.url());
-    if (u.origin === origin && !u.pathname.startsWith('/new/')) outside.push(u.pathname);
+    if (u.origin !== origin) return;
+    if (u.pathname.startsWith('/cdn-cgi/')) {
+      edge.push(u.pathname);
+      return;
+    }
+    if (!u.pathname.startsWith('/new/')) outside.push(u.pathname);
   });
   await page.goto(`${origin}/new/wisc3`);
   await waitReady(page);
   expect(outside).toEqual([]);
+  console.log(`edge-injected (exempt): ${edge.length} ${JSON.stringify(edge)}`);
   await assertAppId(page, origin);
   await context.close();
 });
