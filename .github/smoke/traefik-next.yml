@@ -8,6 +8,11 @@ http:
       entryPoints: [web]
       middlewares: [psytoolsnext-home, psytoolsnext-strip]
       service: psytoolsnext
+    psytoolsroot:
+      rule: "Host(`psy.itssilvestre.com`)"
+      priority: 30
+      entryPoints: [web]
+      service: psytoolsnext
   middlewares:
     psytoolsnext-home:
       redirectRegex:

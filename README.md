@@ -39,12 +39,16 @@ cd .tmp/old-publish && dotnet Silvestre.Psychology.Tools.WebApp.dll --urls http:
 - Phase 1 on `psy.`: the new app is served at `/new` behind Traefik (stripprefix, plus a redirect of bare `/new` to `/new/wisc3`); the old app stays at `/` and shows a banner linking to the new one when `NewApp__Url` is set.
 - Local checks: `npm run test:prefix` (the build under `/new/` behind `prefix-proxy.mjs`), `npm run test:pair` (old and new app side by side, switching both ways), `npm run test:prod` (read-only, against production). All run in `tests/e2e`.
 
-#### Later switch (phase 2, not done)
-- The same image serves `/`: only the Traefik labels change (a router on `Host(psy.)` without strip).
-- The old app moves to `/legacy`, which needs the `UsePathBase` + base-href host change.
-- The SW meta/config caches are scope-keyed and foreign-cache cleanup runs only at scope `/`, so the root SW still takes over the old stub at once (`stub-takeover.spec`).
-- The manifest id follows the base (`/new/wisc3` now, `/wisc3` after the switch).
-- Also needed: a Cloudflare purge, a `/new` -> `/` redirect plus a self-unregistering `/new/service-worker.js`, and the banner retargeted or removed.
+#### Switch (phase 2)
+- The new app is served at the root (Traefik router `psytoolsroot`, priority 30) and still at `/new` (alias, `psytoolsnext`, priority 100).
+- The old app (1.3.0) is served at `/legacy` with env `PathBase=/legacy` (opt-in: unset = served at `/` exactly as before). `Program.cs` calls `UsePathBase` and then an explicit `UseRouting`; `App.razor` takes its `<base href>` from the request PathBase.
+- A bare `/legacy` redirects to `/legacy/wisc3` (Traefik `psytoolslegacy`, priority 200, no strip).
+- "Versão anterior" in the new app is `Legacy__Url` (HomeLab host_var `htz_psychology_legacy_url`).
+- Tests: `SWITCH_PHASE=pre|post npm run test:pair`, `SWITCH_PHASE=pre|mid|post npm run test:prod`, `npx tsx scripts/flip-profile.ts prepare|check`.
+
+##### Follow-up (deferred)
+- New app 2.1.0 with a retire service worker at `/new/service-worker.js` (deletes its caches, unregisters, navigates clients to `/wisc3`), later a Traefik redirect `/new/*` -> `/`.
+- Installed `/new` PWAs cannot be migrated: users reinstall from the root.
 
 ### Tests
 - Web: `cd web && npm test` (also `npm run typecheck`).
