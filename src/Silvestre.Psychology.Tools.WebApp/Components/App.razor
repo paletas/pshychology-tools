@@ -1,11 +1,12 @@
 ﻿@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Http
 
 <!DOCTYPE html>
 <html lang="pt">
 <head>
     <script data-ad-client="ca-pub-7199897902029134" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
     <meta charset="utf-8" />
-    <base href="/" />
+    <base href="@BaseHref" />
     <link href="css/App.css" rel="stylesheet" />
     <link href="lib/Chart.js/Chart.min.css" rel="stylesheet" />
     <link href="manifest.json" rel="manifest" />
@@ -50,3 +51,10 @@
     </script>
 </body>
 </html>
+
+@code {
+    // Static SSR root: PathBase is empty at the root and "/legacy" when the PathBase setting is /legacy.
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    private string BaseHref => (HttpContext?.Request.PathBase.Value ?? string.Empty) + "/";
+}

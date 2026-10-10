@@ -1,4 +1,5 @@
 // Test stand-in for Traefik stripprefix /new + redirectregex (HomeLab psychology-next.compose.yml.j2).
+// Switch mode: LEGACY_UPSTREAM set = /legacy and /legacy/ redirect 302 to /legacy/wisc3, /legacy/* forwarded unchanged (no strip) to it, as Traefik psytoolslegacy.
 // Env: PROXY_PORT, NEW_UPSTREAM (http url), and exactly one of ROOT_UPSTREAM (http url) or ROOT_DIR (static directory).
 import { createServer, request } from 'node:http';
 import { connect } from 'node:net';
@@ -8,6 +9,7 @@ import { extname, join, normalize, sep } from 'node:path';
 const port = Number(process.env.PROXY_PORT);
 const newUp = new URL(process.env.NEW_UPSTREAM ?? '');
 const rootUp = process.env.ROOT_UPSTREAM ? new URL(process.env.ROOT_UPSTREAM) : null;
+const legacyUp = process.env.LEGACY_UPSTREAM ? new URL(process.env.LEGACY_UPSTREAM) : null;
 const rootDir = process.env.ROOT_DIR ?? null;
 if (!port || (!rootUp === !rootDir)) {
   console.error('set PROXY_PORT, NEW_UPSTREAM and exactly one of ROOT_UPSTREAM / ROOT_DIR');
@@ -56,7 +58,11 @@ async function serveStatic(pathname, res) {
 
 const server = createServer((req, res) => {
   const u = new URL(req.url ?? '/', 'http://proxy');
-  if (u.pathname === '/new' || u.pathname === '/new/') {
+  if (legacyUp && (u.pathname === '/legacy' || u.pathname === '/legacy/')) {
+    res.writeHead(302, { location: '/legacy/wisc3' }).end();
+  } else if (legacyUp && u.pathname.startsWith('/legacy/')) {
+    forward(req, res, legacyUp, req.url);
+  } else if (u.pathname === '/new' || u.pathname === '/new/') {
     res.writeHead(302, { location: '/new/wisc3' }).end();
   } else if (u.pathname.startsWith('/new/')) {
     forward(req, res, newUp, req.url.slice(4));
@@ -69,14 +75,15 @@ const server = createServer((req, res) => {
 
 // the old app registers server interactivity (Blazor circuit WebSocket)
 server.on('upgrade', (req, socket, head) => {
-  if (!rootUp || (req.url ?? '').startsWith('/new/')) {
+  const target = legacyUp ? ((req.url ?? '').startsWith('/legacy/') ? legacyUp : null) : rootUp && !(req.url ?? '').startsWith('/new/') ? rootUp : null;
+  if (!target) {
     socket.destroy();
     return;
   }
-  const up = connect(Number(rootUp.port), rootUp.hostname, () => {
+  const up = connect(Number(target.port), target.hostname, () => {
     const lines = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
     for (let i = 0; i < req.rawHeaders.length; i += 2) {
-      lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i].toLowerCase() === 'host' ? rootUp.host : req.rawHeaders[i + 1]}`);
+      lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i].toLowerCase() === 'host' ? target.host : req.rawHeaders[i + 1]}`);
     }
     up.write(lines.join('\r\n') + '\r\n\r\n');
     if (head.length) up.write(head);
