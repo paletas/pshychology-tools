@@ -18,6 +18,8 @@ export default defineConfig({
       injectManifest: {
         rollupFormat: 'iife',
         globPatterns: ['**/*.{js,css,html,json,png,ico,svg,woff2}'],
+        // the retire worker is served only at /new/service-worker.js (Traefik psytoolsretire); the root worker must not precache it
+        globIgnores: ['**/node_modules/**/*', 'retire-service-worker.js'],
       },
     }),
   ],
