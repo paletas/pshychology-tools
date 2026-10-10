@@ -44,7 +44,7 @@ cd .tmp/old-publish && dotnet Silvestre.Psychology.Tools.WebApp.dll --urls http:
 - The old app (1.3.0) is served at `/legacy` with env `PathBase=/legacy` (opt-in: unset = served at `/` exactly as before). `Program.cs` calls `UsePathBase` and then an explicit `UseRouting`; `App.razor` takes its `<base href>` from the request PathBase.
 - A bare `/legacy` redirects to `/legacy/wisc3` (Traefik `psytoolslegacy`, priority 200, no strip).
 - "Versão anterior" in the new app is `Legacy__Url` (HomeLab host_var `htz_psychology_legacy_url`).
-- Tests: `SWITCH_PHASE=pre|post npm run test:pair`, `SWITCH_PHASE=pre|mid|post npm run test:prod`, `npx tsx scripts/flip-profile.ts prepare|check`.
+- Tests: `SWITCH_PHASE=post npm run test:pair`, `SWITCH_PHASE=post npm run test:prod`, `npx tsx scripts/flip-profile.ts prepare|check`.
 
 ##### Follow-up (deferred)
 - New app 2.1.0 with a retire service worker at `/new/service-worker.js` (deletes its caches, unregisters, navigates clients to `/wisc3`), later a Traefik redirect `/new/*` -> `/`.

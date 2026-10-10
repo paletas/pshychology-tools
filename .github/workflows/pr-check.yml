@@ -94,7 +94,7 @@ jobs:
             [ "$code" = 200 ] || fail "$p -> $code"
           done
           curl -s -H "$H" $B/legacy/service-worker.js | grep -qF "addEventListener('fetch'" || fail "service-worker.js has no fetch handler"
-          curl -s -H "$H" $B/wisc3 | grep -qF '<base href="/"' || fail "/wisc3 has no <base href=\"/\">"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -H "$H" $B/wisc3); [ "$code" = 404 ] || fail "/wisc3 expected 404 (no root router), got $code"
           code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" $B/legacyx/wisc3)
           [ "$code" = 404 ] || fail "/legacyx/wisc3 expected 404, got $code"
           echo "Set-Cookie on /legacy/wisc3:"
