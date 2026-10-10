@@ -81,7 +81,7 @@ jobs:
             echo "$h" | head -1 | grep -qE ' 30[1278]' || fail "$p expected a redirect, got: $(echo "$h" | head -1)"
             echo "$h" | grep -iE '^location: http://psy\.itssilvestre\.com/legacy/wisc3$' || fail "$p bad location, headers: $h"
           done
-          refs=$(grep -oE '(src|href)="[^"]+"' /tmp/l.html | sed -E 's/^(src|href)="//; s/"$//' | grep -vE '^(https?:|//|#|data:)' | sort -u)
+          refs=$(sed -E 's/<base [^>]*>//g' /tmp/l.html | grep -oE '(src|href)="[^"]+"' | sed -E 's/^(src|href)="//; s/"$//' | grep -vE '^(https?:|//|#|data:)' | sort -u)
           [ -n "$refs" ] || fail "no relative refs in /legacy/wisc3"
           for r in $refs; do
             case "$r" in /*) fail "root-absolute ref $r";; esac
