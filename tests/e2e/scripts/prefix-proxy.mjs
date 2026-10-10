@@ -1,6 +1,6 @@
 // Test stand-in for Traefik stripprefix /new + redirectregex (HomeLab psychology-next.compose.yml.j2).
 // Switch mode: LEGACY_UPSTREAM set = /legacy and /legacy/ redirect 302 to /legacy/wisc3, /legacy/* forwarded unchanged (no strip) to it, as Traefik psytoolslegacy.
-// Env: PROXY_PORT, NEW_UPSTREAM (http url), and exactly one of ROOT_UPSTREAM (http url) or ROOT_DIR (static directory).
+// Env: PROXY_PORT, NEW_UPSTREAM (http url), and exactly one of ROOT_UPSTREAM (http url) or ROOT_DIR (static directory); optional RETIRE_PATH (as Traefik psytoolsretire: /new/service-worker.js is forwarded to that upstream path, no strip).
 import { createServer, request } from 'node:http';
 import { connect } from 'node:net';
 import { readFile } from 'node:fs/promises';
@@ -11,6 +11,7 @@ const newUp = new URL(process.env.NEW_UPSTREAM ?? '');
 const rootUp = process.env.ROOT_UPSTREAM ? new URL(process.env.ROOT_UPSTREAM) : null;
 const legacyUp = process.env.LEGACY_UPSTREAM ? new URL(process.env.LEGACY_UPSTREAM) : null;
 const rootDir = process.env.ROOT_DIR ?? null;
+const retirePath = process.env.RETIRE_PATH ?? '';
 if (!port || (!rootUp === !rootDir)) {
   console.error('set PROXY_PORT, NEW_UPSTREAM and exactly one of ROOT_UPSTREAM / ROOT_DIR');
   process.exit(2);
@@ -58,7 +59,9 @@ async function serveStatic(pathname, res) {
 
 const server = createServer((req, res) => {
   const u = new URL(req.url ?? '/', 'http://proxy');
-  if (legacyUp && (u.pathname === '/legacy' || u.pathname === '/legacy/')) {
+  if (retirePath && u.pathname === '/new/service-worker.js') {
+    forward(req, res, newUp, retirePath);
+  } else if (legacyUp && (u.pathname === '/legacy' || u.pathname === '/legacy/')) {
     res.writeHead(302, { location: '/legacy/wisc3' }).end();
   } else if (legacyUp && u.pathname.startsWith('/legacy/')) {
     forward(req, res, legacyUp, req.url);

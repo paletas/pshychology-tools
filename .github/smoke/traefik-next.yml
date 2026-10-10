@@ -8,6 +8,12 @@ http:
       entryPoints: [web]
       middlewares: [psytoolsnext-home, psytoolsnext-strip]
       service: psytoolsnext
+    psytoolsretire:
+      rule: "Host(`psy.itssilvestre.com`) && Path(`/new/service-worker.js`)"
+      priority: 110
+      entryPoints: [web]
+      middlewares: [psytoolsretire-path]
+      service: psytoolsnext
     psytoolsroot:
       rule: "Host(`psy.itssilvestre.com`)"
       priority: 30
@@ -21,6 +27,9 @@ http:
     psytoolsnext-strip:
       stripPrefix:
         prefixes: ["/new"]
+    psytoolsretire-path:
+      replacePath:
+        path: /retire-service-worker.js
   services:
     psytoolsnext:
       loadBalancer:

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { dataDir, e2eDir, oldPublish, repoRoot, webDist } from './specs/helpers/paths';
 
 // Both apps behind prefix-proxy.mjs on one origin, as in production. Needs `npm run old:publish` first.
-// SWITCH_PHASE=post (the only phase since the switch close-out): new app at / and /new, old app (env PathBase=/legacy) at /legacy (specs/pair/switch.spec.ts, new-and-root.spec.ts).
+// SWITCH_PHASE=post (the only phase since the switch close-out): new app at / and /new, old app (env PathBase=/legacy) at /legacy (specs/pair/switch.spec.ts, new-and-root.spec.ts). /new/service-worker.js is the retire worker (as Traefik psytoolsretire), so /new bounces to the root.
 const phase = process.env.SWITCH_PHASE;
 if (phase !== 'post') throw new Error('set SWITCH_PHASE=post');
 const OLD = 'http://localhost:5110';
@@ -39,7 +39,7 @@ export default defineConfig({
     {
       command: 'node scripts/prefix-proxy.mjs',
       cwd: e2eDir,
-      env: { PROXY_PORT: '5310', NEW_UPSTREAM: NEW, ROOT_UPSTREAM: NEW, LEGACY_UPSTREAM: OLD },
+      env: { PROXY_PORT: '5310', NEW_UPSTREAM: NEW, ROOT_UPSTREAM: NEW, LEGACY_UPSTREAM: OLD, RETIRE_PATH: '/retire-service-worker.js' },
       url: `${PROXY}/new/healthz`,
       timeout: 60_000,
       reuseExistingServer: false,

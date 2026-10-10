@@ -169,12 +169,16 @@ test('@legacy bare /legacy redirects to /legacy/wisc3', async ({ browser, baseUR
   await context.close();
 });
 
-test('/new/wisc3 still renders and links to /legacy/wisc3', async ({ browser, baseURL }, testInfo) => {
+test('/new/wisc3 loads then bounces to /wisc3, which links to /legacy/wisc3', async ({ browser, baseURL }, testInfo) => {
   const origin = originOf(baseURL);
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
-  await page.goto(`${origin}/new/wisc3`);
+  const res = await page.request.get(`${origin}/new/wisc3`, { maxRedirects: 0 });
+  expect(res.status()).toBe(200);
+  // the retire worker may interrupt this navigation
+  await page.goto(`${origin}/new/wisc3`).catch(() => undefined);
+  await expect.poll(() => page.url(), { timeout: 30_000 }).toBe(`${origin}/wisc3`);
   await waitReady(page);
   if (testInfo.project.name === 'phone') {
     await page.locator('button.menu').click();

@@ -46,9 +46,12 @@ cd .tmp/old-publish && dotnet Silvestre.Psychology.Tools.WebApp.dll --urls http:
 - "Versão anterior" in the new app is `Legacy__Url` (HomeLab host_var `htz_psychology_legacy_url`).
 - Tests: `SWITCH_PHASE=post npm run test:pair`, `SWITCH_PHASE=post npm run test:prod`, `npx tsx scripts/flip-profile.ts prepare|check`.
 
-##### Follow-up (deferred)
-- New app 2.1.0 with a retire service worker at `/new/service-worker.js` (deletes its caches, unregisters, navigates clients to `/wisc3`), later a Traefik redirect `/new/*` -> `/`.
+##### Retiring the /new install (2.1.0)
+- Traefik router `psytoolsretire` (priority 110; HomeLab `psychology-next.compose.yml.j2`, mirrored in `.github/smoke/traefik-next.yml`) serves `web/public/retire-service-worker.js` (marker `// wisc3-retire`) at exactly `/new/service-worker.js`. The root `/service-worker.js` is the normal worker.
+- A browser with the phase-1 `/new` worker picks it up on its next `/new` visit: it takes over at once, deletes the `/new/` caches, unregisters and moves open `/new` windows to `/wisc3`. A fresh `/new/wisc3` visit loads, then bounces to `/wisc3`. At any other scope the file does nothing.
 - Installed `/new` PWAs cannot be migrated: users reinstall from the root.
+- Later (deferred): a Traefik redirect `/new/*` -> `/`. It must never cover `/new/service-worker.js` (a service worker update that meets a redirect fails, so unchecked `/new` installs would stay on 2.0.0 for good): `psytoolsretire` keeps priority 110, above the redirect, indefinitely.
+- Tests: `npm run test:prefix` (`specs/prefix/retire.spec.ts`), `npx tsx scripts/flip-profile.ts prepare-new|check-new|bounce-new|check-root` (production).
 
 ### Tests
 - Web: `cd web && npm test` (also `npm run typecheck`).
