@@ -96,7 +96,7 @@ app.UseStaticFiles(new StaticFileOptions
         {
             headers.CacheControl = Immutable;
         }
-        else if (path is "/service-worker.js" or "/index.html" or "/manifest.json")
+        else if (path is "/service-worker.js" or "/retire-service-worker.js" or "/index.html" or "/manifest.json")
         {
             headers.CacheControl = NoCache;
         }

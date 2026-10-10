@@ -20,6 +20,7 @@ public sealed class ServerFixture : IDisposable
         Directory.CreateDirectory(Path.Combine(Spa, "assets"));
         File.WriteAllText(Path.Combine(Spa, "index.html"), "<html><body>fake-index</body></html>");
         File.WriteAllText(Path.Combine(Spa, "service-worker.js"), "// sw");
+        File.WriteAllText(Path.Combine(Spa, "retire-service-worker.js"), "// wisc3-retire");
         File.WriteAllText(Path.Combine(Spa, "assets", "a.js"), "// a");
         CopyDirectory(FindRealData(), Data);
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>

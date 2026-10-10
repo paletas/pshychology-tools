@@ -8,11 +8,6 @@ http:
       entryPoints: [web]
       middlewares: [psytoolslegacy-home]
       service: psytoolswisc3
-    psytoolswisc3:
-      rule: "Host(`psy.itssilvestre.com`)"
-      priority: 20
-      entryPoints: [web]
-      service: psytoolswisc3
   middlewares:
     psytoolslegacy-home:
       redirectRegex:

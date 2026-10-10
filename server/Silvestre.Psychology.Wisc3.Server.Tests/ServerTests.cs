@@ -108,6 +108,15 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
     }
 
     [Fact]
+    public async Task Retire_worker_is_no_cache()
+    {
+        var resp = await _fx.CreateClient().GetAsync("/retire-service-worker.js");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("no-cache", resp.Headers.CacheControl?.ToString());
+        Assert.Contains("wisc3-retire", await resp.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Routing()
     {
         var client = _fx.CreateClient();

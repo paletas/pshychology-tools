@@ -94,7 +94,7 @@ jobs:
             [ "$code" = 200 ] || fail "$p -> $code"
           done
           curl -s -H "$H" $B/legacy/service-worker.js | grep -qF "addEventListener('fetch'" || fail "service-worker.js has no fetch handler"
-          curl -s -H "$H" $B/wisc3 | grep -qF '<base href="/"' || fail "/wisc3 has no <base href=\"/\">"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -H "$H" $B/wisc3); [ "$code" = 404 ] || fail "/wisc3 expected 404 (no root router), got $code"
           code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" $B/legacyx/wisc3)
           [ "$code" = 404 ] || fail "/legacyx/wisc3 expected 404, got $code"
           echo "Set-Cookie on /legacy/wisc3:"
@@ -154,6 +154,12 @@ jobs:
           grep -qF '<div id="root">' /tmp/r.html
           curl -s http://localhost:8081/config.json | grep -qF '"legacyUrl":"https://psy.itssilvestre.com/legacy/wisc3"'
           [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/service-worker.js)" = 200 ]
+          h=$(curl -s -D - -o /tmp/retire.js http://localhost:8081/retire-service-worker.js | tr -d '\r')
+          echo "$h" | head -1 | grep -q ' 200'
+          echo "$h" | grep -i '^cache-control:' | grep -qi 'no-cache'
+          grep -qF '// wisc3-retire' /tmp/retire.js
+          if curl -s http://localhost:8081/service-worker.js | grep -qF 'retire-service-worker'; then echo "FAIL: root worker precaches the retire file"; exit 1; fi
+          echo "host serves /retire-service-worker.js (no-cache): ok"
 
       - name: Prefix checks (through traefik)
         run: |
@@ -183,9 +189,11 @@ jobs:
             echo "$h" | head -1 | grep -q ' 200' || fail "asset $a: $(echo "$h" | head -1)"
             echo "$h" | grep -i '^cache-control:' | grep -qi immutable || fail "asset $a not immutable: $h"
           done
-          h=$(curl -s -D - -o /dev/null -H "$H" $B/new/service-worker.js | tr -d '\r')
+          h=$(curl -s -D - -o /tmp/nsw.js -H "$H" $B/new/service-worker.js | tr -d '\r')
           echo "$h" | head -1 | grep -q ' 200' || fail "service-worker: $(echo "$h" | head -1)"
           echo "$h" | grep -i '^cache-control:' | grep -qi 'no-cache' || fail "service-worker cache-control: $h"
+          grep -qF '// wisc3-retire' /tmp/nsw.js || fail "/new/service-worker.js is not the retire worker: $(head -c 200 /tmp/nsw.js)"
+          echo "retire worker at /new/service-worker.js: ok"
           ! curl -s -H "$H" $B/new/manifest.json | grep -q '"id"' || fail "/new/manifest.json has an id"
           url=$(curl -s -H "$H" $B/new/api/reference/manifest | sed -E 's/.*"url":"([^"]+)".*/\1/')
           echo "bundle url: $url"
@@ -200,8 +208,12 @@ jobs:
           echo "$h" | head -1 | grep -q ' 302' || fail "/ expected 302, got: $(echo "$h" | head -1)"
           echo "$h" | grep -iE '^location: (http://psy\.itssilvestre\.com/)?wisc3$' || fail "/ bad location, headers: $h"
           curl -s -H "$H" $B/wisc3 | grep -qF '<div id="root">' || fail "no root div in /wisc3"
-          code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" $B/service-worker.js)
+          code=$(curl -s -o /tmp/rsw.js -w '%{http_code}' -H "$H" $B/service-worker.js)
           [ "$code" = 200 ] || fail "/service-worker.js -> $code"
+          ! grep -qF 'wisc3-retire' /tmp/rsw.js || fail "/service-worker.js is the retire worker"
+          ! grep -qF 'retire-service-worker' /tmp/rsw.js || fail "root worker precaches the retire file"
+          grep -qF 'wisc3-meta-' /tmp/rsw.js || fail "/service-worker.js is not the app worker"
+          echo "root worker is not the retire worker: ok"
           ! curl -s -H "$H" $B/manifest.json | grep -q '"id"' || fail "/manifest.json has an id"
           curl -s -H "$H" $B/new/wisc3 | grep -qF '<div id="root">' || fail "no root div in /new/wisc3 (after root router)"
 
