@@ -58,9 +58,54 @@ jobs:
             grep -qF -- "$s" /tmp/on.html || { echo "missing: $s"; exit 1; }
           done
 
+      - name: Old app under /legacy (PathBase, through traefik)
+        run: |
+          set -e
+          fail() { echo "FAIL: $*"; exit 1; }
+          docker network create smoke-legacy
+          docker run -d --name legacy --network smoke-legacy -e ASPNETCORE_ENVIRONMENT=Production -e ASPNETCORE_URLS=http://+:80 -e PathBase=/legacy smoke:webapp
+          docker run -d --name traefik-legacy --network smoke-legacy -p 8091:80 -v "$PWD/.github/smoke/traefik-legacy.yml:/etc/traefik/dyn.yml:ro" traefik:v2.9 --entrypoints.web.address=:80 --providers.file.filename=/etc/traefik/dyn.yml
+          B=http://localhost:8091
+          H='Host: psy.itssilvestre.com'
+          code=000
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /tmp/l.html -w '%{http_code}' -H "$H" $B/legacy/wisc3 || true)
+            [ "$code" = 200 ] && break
+            sleep 2
+          done
+          [ "$code" = 200 ] || fail "/legacy/wisc3 -> $code"
+          grep -qF '<base href="/legacy/"' /tmp/l.html || fail "no <base href=\"/legacy/\"> in /legacy/wisc3"
+          ! grep -q 'data-testid="new-app-banner"' /tmp/l.html || fail "banner on /legacy/wisc3"
+          for p in /legacy /legacy/; do
+            h=$(curl -s -D - -o /dev/null -H "$H" "$B$p" | tr -d '\r')
+            echo "$h" | head -1 | grep -qE ' 30[1278]' || fail "$p expected a redirect, got: $(echo "$h" | head -1)"
+            echo "$h" | grep -iE '^location: http://psy\.itssilvestre\.com/legacy/wisc3$' || fail "$p bad location, headers: $h"
+          done
+          refs=$(sed -E 's/<base [^>]*>//g' /tmp/l.html | grep -oE '(src|href)="[^"]+"' | sed -E 's/^(src|href)="//; s/"$//' | grep -vE '^(https?:|//|#|data:)' | sort -u)
+          [ -n "$refs" ] || fail "no relative refs in /legacy/wisc3"
+          for r in $refs; do
+            case "$r" in /*) fail "root-absolute ref $r";; esac
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$B/legacy/$r")
+            echo "/legacy/$r -> $code"
+            [ "$code" = 200 ] || fail "/legacy/$r -> $code"
+          done
+          for p in /legacy/_framework/blazor.web.js /legacy/service-worker.js /legacy/manifest.json; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$B$p")
+            [ "$code" = 200 ] || fail "$p -> $code"
+          done
+          curl -s -H "$H" $B/legacy/service-worker.js | grep -qF "addEventListener('fetch'" || fail "service-worker.js has no fetch handler"
+          curl -s -H "$H" $B/wisc3 | grep -qF '<base href="/"' || fail "/wisc3 has no <base href=\"/\">"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" $B/legacyx/wisc3)
+          [ "$code" = 404 ] || fail "/legacyx/wisc3 expected 404, got $code"
+          echo "Set-Cookie on /legacy/wisc3:"
+          curl -s -D - -o /dev/null -H "$H" $B/legacy/wisc3 | tr -d '\r' | grep -i '^set-cookie' | sed -E 's/=[^;]*;/=<redacted>;/' || true
+
       - name: Container logs
         if: failure()
-        run: docker logs smoke || true
+        run: |
+          docker logs smoke || true
+          docker logs legacy || true
+          docker logs traefik-legacy || true
 
   tag-guard:
     name: tag guard (old 1.x, new >= 2)
@@ -89,7 +134,7 @@ jobs:
       - name: Start next + traefik
         run: |
           docker network create smoke
-          docker run -d --name next --network smoke -p 8081:8080 -e Legacy__Url=https://psy.itssilvestre.com/wisc3 smoke:next
+          docker run -d --name next --network smoke -p 8081:8080 -e Legacy__Url=https://psy.itssilvestre.com/legacy/wisc3 smoke:next
           docker run -d --name traefik --network smoke -p 8090:80 -v "$PWD/.github/smoke/traefik-next.yml:/etc/traefik/dyn.yml:ro" traefik:v2.9 --entrypoints.web.address=:80 --providers.file.filename=/etc/traefik/dyn.yml
           body=
           for i in $(seq 1 30); do
@@ -107,7 +152,7 @@ jobs:
           echo "$h" | tr -d '\r' | grep -iE '^location: wisc3$'
           [ "$(curl -s -o /tmp/r.html -w '%{http_code}' http://localhost:8081/wisc3)" = 200 ]
           grep -qF '<div id="root">' /tmp/r.html
-          curl -s http://localhost:8081/config.json | grep -qF '"legacyUrl":"https://psy.itssilvestre.com/wisc3"'
+          curl -s http://localhost:8081/config.json | grep -qF '"legacyUrl":"https://psy.itssilvestre.com/legacy/wisc3"'
           [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/service-worker.js)" = 200 ]
 
       - name: Prefix checks (through traefik)
@@ -150,6 +195,15 @@ jobs:
           code=$(curl -s -o /tmp/x.html -w '%{http_code}' -H "$H" $B/newx)
           [ "$code" = 404 ] || fail "/newx expected 404, got $code"
           ! grep -qF '<div id="root">' /tmp/x.html || fail "/newx served the SPA"
+          # root router (psytoolsroot): the new app also answers at /
+          h=$(curl -s -D - -o /dev/null -H "$H" $B/ | tr -d '\r')
+          echo "$h" | head -1 | grep -q ' 302' || fail "/ expected 302, got: $(echo "$h" | head -1)"
+          echo "$h" | grep -iE '^location: (http://psy\.itssilvestre\.com/)?wisc3$' || fail "/ bad location, headers: $h"
+          curl -s -H "$H" $B/wisc3 | grep -qF '<div id="root">' || fail "no root div in /wisc3"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" $B/service-worker.js)
+          [ "$code" = 200 ] || fail "/service-worker.js -> $code"
+          ! curl -s -H "$H" $B/manifest.json | grep -q '"id"' || fail "/manifest.json has an id"
+          curl -s -H "$H" $B/new/wisc3 | grep -qF '<div id="root">' || fail "no root div in /new/wisc3 (after root router)"
 
       - name: Container logs
         if: failure()

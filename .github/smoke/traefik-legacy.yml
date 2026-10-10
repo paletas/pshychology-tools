@@ -1,0 +1,25 @@
+# CI smoke routing for the old app under /legacy (env PathBase=/legacy, no strip).
+# keep in sync with HomeLab roles/htz_server/templates/psychology.compose.yml.j2 (labels use $$)
+http:
+  routers:
+    psytoolslegacy:
+      rule: "Host(`psy.itssilvestre.com`) && (Path(`/legacy`) || PathPrefix(`/legacy/`))"
+      priority: 200
+      entryPoints: [web]
+      middlewares: [psytoolslegacy-home]
+      service: psytoolswisc3
+    psytoolswisc3:
+      rule: "Host(`psy.itssilvestre.com`)"
+      priority: 20
+      entryPoints: [web]
+      service: psytoolswisc3
+  middlewares:
+    psytoolslegacy-home:
+      redirectRegex:
+        regex: '^(https?://[^/]+)/legacy/?$'
+        replacement: '${1}/legacy/wisc3'
+  services:
+    psytoolswisc3:
+      loadBalancer:
+        servers:
+          - url: http://legacy:80

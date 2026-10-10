@@ -4,9 +4,10 @@ import { pt } from '../../../../web/src/i18n/pt';
 import { blockAds } from '../helpers/adblock';
 import { waitControlled, waitReady } from '../helpers/app';
 
-// POST-switch (phase 2 state: new app at / and /new, old app at /legacy). Selected by SWITCH_PHASE=post.
-// Runs locally (pair config) and read-only against prod (prod config). Tests tagged @legacy also run alone in the mid phase.
+// PRE-switch (phase 1 state: old app at /, banner, new app at /new). Selected by SWITCH_PHASE=pre; delete at close-out.
 const BANNER = '[data-testid="new-app-banner"]';
+const SENTENCE =
+  'Está disponível uma nova versão da calculadora WISC-III, que também funciona sem ligação à internet. Esta versão continua disponível.';
 
 function originOf(baseURL: string | undefined): string {
   return new URL(baseURL!).origin;
@@ -36,15 +37,15 @@ async function enterOldDates(page: Page, testDate: string, birthDate: string): P
   }
 }
 
-async function assertRootAppId(page: Page, origin: string): Promise<void> {
+async function assertAppId(page: Page, origin: string): Promise<void> {
   const cdp = await page.context().newCDPSession(page);
   const { appId } = await cdp.send('Page.getAppId');
   console.log(`appId: ${appId || '(empty, manifest fallback)'}`);
   if (appId) {
-    expect(appId).toBe(`${origin}/wisc3`);
+    expect(appId).toBe(`${origin}/new/wisc3`);
   } else {
     const { url, data } = await cdp.send('Page.getAppManifest', {});
-    expect(url).toBe(`${origin}/manifest.json`);
+    expect(url).toMatch(/\/new\/manifest\.json$/);
     const manifest = JSON.parse(data ?? '{}');
     console.log(`manifest: ${url} start_url=${manifest.start_url} id=${manifest.id}`);
     expect(manifest.id).toBeUndefined();
@@ -52,93 +53,64 @@ async function assertRootAppId(page: Page, origin: string): Promise<void> {
   }
 }
 
-test('root serves the new app, App ID /wisc3, no request outside the root app', async ({ browser, baseURL }) => {
-  const origin = originOf(baseURL);
-  const context = await browser.newContext();
-  await blockAds(context);
-  const page = await context.newPage();
-  const paths: string[] = [];
-  const edge: string[] = [];
-  page.on('request', (r) => {
-    const u = new URL(r.url());
-    if (u.origin !== origin) return;
-    if (u.pathname.startsWith('/cdn-cgi/')) {
-      edge.push(u.pathname);
-      return;
-    }
-    paths.push(u.pathname);
-  });
-  await page.goto(`${origin}/`);
-  await page.waitForURL(`${origin}/wisc3`);
-  await waitControlled(page);
-  await waitReady(page);
-  expect(paths.filter((p) => p.startsWith('/new/') || p.startsWith('/legacy/'))).toEqual([]);
-  console.log(`edge-injected (exempt): ${edge.length} ${JSON.stringify(edge)}`);
-  await assertRootAppId(page, origin);
-  await context.close();
-});
-
-test('Versão anterior opens /legacy/wisc3 without banner and Back returns', async ({ browser, baseURL }, testInfo) => {
+test('old -> new -> old', async ({ browser, baseURL }, testInfo) => {
   const origin = originOf(baseURL);
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
   await page.goto('wisc3');
+  await waitOldBlazor(page);
+  const banner = page.locator(BANNER);
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText(SENTENCE);
+  await expect(banner).toContainText('Experimentar a nova versão');
+  await expect(banner).toContainText('Fechar');
+  const oldCaches = (await page.evaluate(() => caches.keys())).filter((k) => !k.startsWith('wisc3-'));
+
+  await banner.getByRole('link', { name: 'Experimentar a nova versão' }).click();
+  await page.waitForURL(`${origin}/new/wisc3`);
+  expect(await page.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).name)).toMatch(/\/new\/wisc3$/);
+  await waitControlled(page);
   await waitReady(page);
+  const scopes = await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope));
+  expect(scopes).toContain(`${origin}/new/`);
+  expect(scopes).toContain(`${origin}/`);
+  const keys = await page.evaluate(() => caches.keys());
+  for (const k of oldCaches) expect(keys).toContain(k);
+
   if (testInfo.project.name === 'phone') {
     // below 640 px the new app's nav (with "Versão anterior") sits behind the Menu button (web/src/index.css:57)
     await page.locator('button.menu').click();
     await expect(page.locator('button.menu')).toHaveAttribute('aria-expanded', 'true');
   }
-  await expect(page.getByTestId('legacy-link')).toHaveAttribute('href', `${origin}/legacy/wisc3`);
+  await expect(page.getByTestId('legacy-link')).toBeVisible();
   await page.getByTestId('legacy-link').click();
-  await page.waitForURL(`${origin}/legacy/wisc3`);
-  await waitOldBlazor(page);
-  await expect(page.locator(BANNER)).toHaveCount(0);
-  await page.goBack();
   await page.waitForURL(`${origin}/wisc3`);
-  await waitReady(page);
+  await expect(page.locator(BANNER)).toBeVisible();
   await context.close();
 });
 
-test('@legacy old app boots under /legacy/ (base, SW scope, nav, requests)', async ({ browser, baseURL }) => {
-  const origin = originOf(baseURL);
+test('Fechar hides until reload', async ({ browser }) => {
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
-  const paths: string[] = [];
-  const edge: string[] = [];
-  page.on('request', (r) => {
-    const u = new URL(r.url());
-    if (u.origin !== origin) return;
-    if (u.pathname.startsWith('/cdn-cgi/')) {
-      edge.push(u.pathname);
-      return;
-    }
-    paths.push(u.pathname);
-  });
-  await page.goto('legacy/wisc3');
+  await page.goto('wisc3');
   await waitOldBlazor(page);
-  await page.waitForLoadState('networkidle');
-  expect(await page.evaluate(() => document.baseURI)).toBe(`${origin}/legacy/`);
+  await expect(page.locator(BANNER)).toBeVisible();
+  await page.locator('button[aria-label="Fechar aviso"]').click();
   await expect(page.locator(BANNER)).toHaveCount(0);
-  expect(await page.evaluate(() => (document.querySelector('link[rel=manifest]') as HTMLLinkElement).href)).toBe(`${origin}/legacy/manifest.json`);
-  expect(await page.evaluate(() => (document.querySelector('a[href="WISC3"]') as HTMLAnchorElement).href)).toBe(`${origin}/legacy/WISC3`);
-  await expect
-    .poll(async () => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope)), { timeout: 30_000 })
-    .toContain(`${origin}/legacy/`);
-  console.log(`edge-injected (exempt): ${edge.length} ${JSON.stringify(edge)}`);
-  expect(paths.filter((p) => !p.startsWith('/legacy/'))).toEqual([]);
+  await page.reload();
+  await expect(page.locator(BANNER)).toBeVisible();
   await context.close();
 });
 
-test('@legacy old app at /legacy shows corrected cell C1', async ({ browser }, testInfo) => {
+test('old app shows corrected cell C1', async ({ browser }, testInfo) => {
   // the old calculator is hidden below the md breakpoint (WISC3.razor shows "DeviceSizeSmall" instead)
   test.skip(testInfo.project.name === 'phone', 'old calculator form is desktop-only');
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
-  await page.goto('legacy/wisc3');
+  await page.goto('wisc3');
   await waitOldBlazor(page);
   await enterOldDates(page, '2026-10-04', '2015-04-04');
   await expect(page.locator('#subjectAgeYear')).toHaveValue('11');
@@ -156,30 +128,41 @@ test('@legacy old app at /legacy shows corrected cell C1', async ({ browser }, t
   await context.close();
 });
 
-test('@legacy bare /legacy redirects to /legacy/wisc3', async ({ browser, baseURL }) => {
+test('new app App ID and no request outside /new/', async ({ browser, baseURL }) => {
   const origin = originOf(baseURL);
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
-  for (const p of ['/legacy', '/legacy/']) {
-    const res = await page.request.get(origin + p, { maxRedirects: 0 });
-    expect([301, 302, 307, 308]).toContain(res.status());
-    expect(res.headers()['location']).toMatch(/\/legacy\/wisc3$/);
-  }
+  const outside: string[] = [];
+  const edge: string[] = [];
+  page.on('request', (r) => {
+    const u = new URL(r.url());
+    if (u.origin !== origin) return;
+    if (u.pathname.startsWith('/cdn-cgi/')) {
+      edge.push(u.pathname);
+      return;
+    }
+    if (!u.pathname.startsWith('/new/')) outside.push(u.pathname);
+  });
+  await page.goto(`${origin}/new/wisc3`);
+  await waitReady(page);
+  expect(outside).toEqual([]);
+  console.log(`edge-injected (exempt): ${edge.length} ${JSON.stringify(edge)}`);
+  await assertAppId(page, origin);
   await context.close();
 });
 
-test('/new/wisc3 still renders and links to /legacy/wisc3', async ({ browser, baseURL }, testInfo) => {
+test('new app offline reload at /new/wisc3', async ({ browser, baseURL }) => {
+  test.skip(new URL(baseURL!).hostname !== 'localhost', 'offline reload runs on the local pair only');
   const origin = originOf(baseURL);
   const context = await browser.newContext();
   await blockAds(context);
   const page = await context.newPage();
   await page.goto(`${origin}/new/wisc3`);
+  await waitControlled(page);
   await waitReady(page);
-  if (testInfo.project.name === 'phone') {
-    await page.locator('button.menu').click();
-    await expect(page.locator('button.menu')).toHaveAttribute('aria-expanded', 'true');
-  }
-  await expect(page.getByTestId('legacy-link')).toHaveAttribute('href', `${origin}/legacy/wisc3`);
+  await context.setOffline(true);
+  await page.reload();
+  await waitReady(page);
   await context.close();
 });

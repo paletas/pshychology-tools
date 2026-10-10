@@ -7,7 +7,7 @@
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
     <UserSecretsId>bba66cf3-c85f-4cdc-81ed-614404f23ba0</UserSecretsId>
     <BlazorCacheBootResources>false</BlazorCacheBootResources>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
