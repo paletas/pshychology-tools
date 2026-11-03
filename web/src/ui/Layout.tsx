@@ -50,6 +50,7 @@ export function Layout({ children, dataVersion, glance, legacySlot, themeSlot }:
         <span>{pt['Language']}: {pt['Language.pt-PT']}</span>
         {dataVersion !== undefined && <span data-testid="data-version">Dados: {dataVersion}</span>}
         <span>{ptNew['footer.offline']}</span>
+        <span data-testid="footer-analytics">{ptNew['footer.analytics']}</span>
       </footer>
     </>
   );

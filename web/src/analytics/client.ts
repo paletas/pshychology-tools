@@ -82,7 +82,8 @@ async function send(e: QueuedEvent): Promise<boolean> {
   }
 }
 
-export const flushQueue = (): Promise<void> => flush(send).catch(() => {});
+// disabled (wrong host, no config, opt-out): never open the queue database, so nothing is created in the browser
+export const flushQueue = (): Promise<void> => (isEnabled() ? flush(send).catch(() => {}) : Promise.resolve());
 const doFlush = flushQueue;
 
 export async function initAnalytics(): Promise<void> {
