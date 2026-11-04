@@ -5,6 +5,7 @@ export const ptNew: Record<string, string> = {
   "nav.aria": "Principal",
   "menu": "Menu",
   "footer.offline": "Funciona sem ligação depois da primeira abertura.",
+  "footer.analytics": "Estatísticas de utilização anónimas e sem cookies, via Umami (auto-alojado) e Cloudflare Web Analytics.",
   "theme": "Tema",
   "theme.aria": "Alternar tema claro ou escuro",
   "legacy": "Versão anterior",

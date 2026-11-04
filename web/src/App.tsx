@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { setDataVersion, track } from './analytics/client';
+import { buildCalcStarted, buildCiChanged, buildLookupOpened, buildPrint, buildRefdataFailed, buildResultsShown, buildSheetLeft, buildSheetReset } from './analytics/events';
 import { publishDebug } from './debug';
 import { chartPayloads } from './engine/charts';
 import { scoreCase } from './engine/scoring';
@@ -50,6 +52,7 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
       if (!alive) return;
       setLoaded(h.current);
       setLoadFailed(h.current === null);
+      if (h.current === null) track(buildRefdataFailed());
       setReady(true);
       h.onPending(() => alive && setDataPending(true));
     });
@@ -83,11 +86,54 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   const derived = useMemo(() => chartsDerived(charts), [charts]);
   const optional = useMemo(() => Object.fromEntries((data?.tests ?? []).map((t) => [t.id, !t.mandatory])), [data]);
 
+  // Analytics hooks: refs only (no re-renders); ids, outcomes and durations, never input values.
+  const startedAt = useRef<number | null>(null);
+  const shownSent = useRef(false);
+  const printVia = useRef<'button' | null>(null);
+  const latest = useRef<{ shown: boolean; reasonKey: string | null; hadResults: boolean }>({ shown: false, reasonKey: null, hadResults: false });
+  latest.current = { shown, reasonKey: reason?.key ?? null, hadResults: shown };
+
+  const markStarted = () => {
+    if (startedAt.current !== null) return;
+    startedAt.current = performance.now();
+    track(buildCalcStarted());
+  };
+  const leaveSheet = () => {
+    if (startedAt.current === null) return;
+    const l = latest.current;
+    track(buildSheetLeft(l.shown ? 'results' : l.reasonKey ? 'blocked' : 'partial', l.reasonKey ?? undefined));
+  };
+
+  useEffect(() => {
+    if (!shown || shownSent.current) return;
+    shownSent.current = true;
+    const ids = Object.keys(raw).filter((id) => optional[id] && raw[id] !== null);
+    track(buildResultsShown(startedAt.current === null ? 0 : performance.now() - startedAt.current, ids));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown]);
+
+  useEffect(() => {
+    const onHide = () => leaveSheet();
+    const onBeforePrint = () => {
+      track(buildPrint(printVia.current ?? 'beforeprint', latest.current.hadResults));
+      printVia.current = null;
+    };
+    window.addEventListener('pagehide', onHide);
+    window.addEventListener('beforeprint', onBeforePrint);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('beforeprint', onBeforePrint);
+    };
+  }, []);
+
+  useEffect(() => setDataVersion(data?.dataVersion), [data]);
+
   useEffect(() => {
     publishDebug({ snapshot, charts, chartsDerived: derived, dataVersion: data?.dataVersion ?? null, dataSha: loaded?.sha ?? null });
   }, [snapshot, charts, derived, data, loaded]);
 
   const setDates = (t: string, b: string, tBad = false, bBad = false) => {
+    if (t || b) markStarted();
     if (data) {
       // as in WISC3TestViewModel: when the age changes, a raw outside the new bounds is cleared
       const next = scoreCase(data, { testDate: t, birthDate: b, raw });
@@ -104,6 +150,12 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
   };
 
   const startFresh = () => {
+    if (startedAt.current !== null) {
+      leaveSheet();
+      track(buildSheetReset());
+    }
+    startedAt.current = null;
+    shownSent.current = false;
     setTestDate('');
     setBirthDate('');
     setTestBad(false);
@@ -151,12 +203,25 @@ export function App({ swUpdate }: { swUpdate?: SwUpdate }) {
               onTestDate={(v, bad) => setDates(v, birthDate, bad, birthBad)}
               onBirthDate={(v, bad) => setDates(testDate, v, testBad, bad)}
             />
-            <SubtestTable data={data} snapshot={snapshot} rawText={rawText} rawErrors={rawErrors} onRawText={(id, text) => setRawText((r) => ({ ...r, [id]: text }))} />
-            <SheetActions onShowTable={() => setShowTable(true)} onPrint={() => window.print()} onStartFresh={startFresh} />
+            <SubtestTable data={data} snapshot={snapshot} rawText={rawText} rawErrors={rawErrors} onRawText={(id, text) => {
+                if (text) markStarted();
+                setRawText((r) => ({ ...r, [id]: text }));
+              }} />
+            <SheetActions onShowTable={() => {
+                setShowTable(true);
+                track(buildLookupOpened());
+              }}
+              onPrint={() => {
+                printVia.current = 'button';
+                window.print();
+              }} onStartFresh={startFresh} />
           </section>
 
           <section className="results" aria-labelledby="h-res">
-            <IndexTable snapshot={snapshot} reason={reason} ci={ci} onCi={setCi} />
+            <IndexTable snapshot={snapshot} reason={reason} ci={ci} onCi={(v) => {
+                setCi(v);
+                track(buildCiChanged(v === 'Percentil90' ? '90' : v === 'Percentil95' ? '95' : v));
+              }} />
           </section>
         </div>
 

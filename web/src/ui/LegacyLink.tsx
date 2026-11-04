@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { track } from '../analytics/client';
+import { buildLegacyClicked } from '../analytics/events';
 import { ptNew } from '../i18n/pt-new';
 
 /** Accepts only an absolute http(s) URL; anything else counts as "no legacy URL". */
@@ -50,7 +52,7 @@ export function LegacyLink() {
   if (!url) return null;
   if (online) {
     return (
-      <a href={url} rel="noopener" data-testid="legacy-link">
+      <a href={url} rel="noopener" data-testid="legacy-link" onClick={() => track(buildLegacyClicked())}>
         {ptNew['legacy']}
       </a>
     );

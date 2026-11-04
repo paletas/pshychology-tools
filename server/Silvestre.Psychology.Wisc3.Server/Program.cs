@@ -14,7 +14,18 @@ string? legacyUrl = Uri.TryCreate(legacyRaw?.Trim(), UriKind.Absolute, out var l
     && (legacyUri.Scheme == Uri.UriSchemeHttp || legacyUri.Scheme == Uri.UriSchemeHttps)
     ? legacyUri.AbsoluteUri
     : null;
-var configBytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(new { legacyUrl }));
+// Optional analytics block: present only when Analytics:WebsiteId is set; endpoint must be an absolute https URL, else the default.
+var configDoc = new Dictionary<string, object?> { ["legacyUrl"] = legacyUrl };
+var analyticsWebsiteId = builder.Configuration["Analytics:WebsiteId"]?.Trim();
+if (!string.IsNullOrEmpty(analyticsWebsiteId))
+{
+    var endpointRaw = builder.Configuration["Analytics:Endpoint"]?.Trim();
+    var endpoint = Uri.TryCreate(endpointRaw, UriKind.Absolute, out var endpointUri) && endpointUri.Scheme == Uri.UriSchemeHttps
+        ? endpointUri.AbsoluteUri
+        : "https://stats.itssilvestre.com/api/send";
+    configDoc["analytics"] = new { websiteId = analyticsWebsiteId, endpoint };
+}
+var configBytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(configDoc));
 var configEtag = $"\"{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(configBytes)).ToLowerInvariant()}\"";
 
 var app = builder.Build();

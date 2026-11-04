@@ -213,6 +213,61 @@ public sealed class ServerTests : IClassFixture<ServerFixture>
             AssertNoSetCookie(await _fx.CreateClient().GetAsync(path));
     }
 
+    private const string DefaultAnalyticsEndpoint = "https://stats.itssilvestre.com/api/send";
+    private const string SampleWebsiteId = "11111111-1111-1111-1111-111111111111";
+
+    [Fact]
+    public async Task Config_Analytics_Unset_HasNoAnalyticsKey()
+    {
+        var (_, body) = await GetConfigAsync(_fx);
+        Assert.False(JsonDocument.Parse(body).RootElement.TryGetProperty("analytics", out _));
+        Assert.Equal("{\"legacyUrl\":null}", body);
+
+        using var fx = ServerFixture.WithSettings(new Dictionary<string, string> { ["Analytics:WebsiteId"] = "   " });
+        var (_, blank) = await GetConfigAsync(fx);
+        Assert.False(JsonDocument.Parse(blank).RootElement.TryGetProperty("analytics", out _));
+    }
+
+    [Fact]
+    public async Task Config_Analytics_Set_UsesDefaultEndpoint()
+    {
+        using var fx = ServerFixture.WithSettings(new Dictionary<string, string> { ["Analytics:WebsiteId"] = SampleWebsiteId });
+        var (resp, body) = await GetConfigAsync(fx);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var root = JsonDocument.Parse(body).RootElement;
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("legacyUrl").ValueKind);
+        var a = root.GetProperty("analytics");
+        Assert.Equal(SampleWebsiteId, a.GetProperty("websiteId").GetString());
+        Assert.Equal(DefaultAnalyticsEndpoint, a.GetProperty("endpoint").GetString());
+        AssertNoSetCookie(resp);
+    }
+
+    [Fact]
+    public async Task Config_Analytics_CustomEndpoint()
+    {
+        using (var fx = ServerFixture.WithSettings(new Dictionary<string, string>
+        {
+            ["Analytics:WebsiteId"] = SampleWebsiteId,
+            ["Analytics:Endpoint"] = "https://stats.example/api/send",
+        }))
+        {
+            var (_, body) = await GetConfigAsync(fx);
+            Assert.Equal("https://stats.example/api/send",
+                JsonDocument.Parse(body).RootElement.GetProperty("analytics").GetProperty("endpoint").GetString());
+        }
+        foreach (var bad in new[] { "http://x/y", "garbage" })
+        {
+            using var fx = ServerFixture.WithSettings(new Dictionary<string, string>
+            {
+                ["Analytics:WebsiteId"] = SampleWebsiteId,
+                ["Analytics:Endpoint"] = bad,
+            });
+            var (_, body) = await GetConfigAsync(fx);
+            Assert.Equal(DefaultAnalyticsEndpoint,
+                JsonDocument.Parse(body).RootElement.GetProperty("analytics").GetProperty("endpoint").GetString());
+        }
+    }
+
     [Fact]
     public async Task Config_Set()
     {
