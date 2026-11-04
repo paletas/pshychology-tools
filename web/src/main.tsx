@@ -3,10 +3,20 @@ import { createRoot } from 'react-dom/client';
 import { Workbox } from 'workbox-window';
 import { App } from './App';
 import type { SwUpdate } from './App';
+import { initAnalytics, track, trackPageview } from './analytics/client';
+import { installErrorHandlers } from './analytics/errors';
+import { buildAppInstalled, buildOfflineSession, buildUpdate } from './analytics/events';
+import { ErrorBoundary } from './ErrorBoundary';
 import { installDebug } from './debug';
 import './index.css';
 
 installDebug();
+installErrorHandlers();
+void initAnalytics().then(() => {
+  trackPageview();
+  if (!navigator.onLine) track(buildOfflineSession());
+});
+window.addEventListener('appinstalled', () => track(buildAppInstalled()));
 
 let swUpdate: SwUpdate | undefined;
 if ('serviceWorker' in navigator) {
@@ -15,6 +25,7 @@ if ('serviceWorker' in navigator) {
   let waiting = false;
   let reloadRequested = false;
   wb.addEventListener('waiting', () => {
+    if (!waiting) track(buildUpdate('available'));
     waiting = true;
     listeners.forEach((l) => l());
   });
@@ -28,6 +39,7 @@ if ('serviceWorker' in navigator) {
       if (waiting) cb();
     },
     apply() {
+      track(buildUpdate('applied'));
       reloadRequested = true;
       wb.messageSkipWaiting();
     },
@@ -37,6 +49,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App swUpdate={swUpdate} />
+    <ErrorBoundary>
+      <App swUpdate={swUpdate} />
+    </ErrorBoundary>
   </StrictMode>,
 );

@@ -12,7 +12,7 @@ public sealed class ServerFixture : IDisposable
 
     public ServerFixture() : this(null) { }
 
-    private ServerFixture(string? legacyUrl)
+    private ServerFixture(string? legacyUrl, IReadOnlyDictionary<string, string>? settings = null)
     {
         Root = Path.Combine(Path.GetTempPath(), "wisc3-server-tests-" + Guid.NewGuid().ToString("N"));
         Spa = Path.Combine(Root, "spa");
@@ -28,10 +28,13 @@ public sealed class ServerFixture : IDisposable
             b.UseSetting("Spa:Root", Spa);
             b.UseSetting("ReferenceData:Path", Data);
             if (legacyUrl is not null) b.UseSetting("Legacy:Url", legacyUrl);
+            if (settings is not null) foreach (var (k, v) in settings) b.UseSetting(k, v);
         });
     }
 
     public static ServerFixture WithLegacyUrl(string legacyUrl) => new(legacyUrl);
+
+    public static ServerFixture WithSettings(IReadOnlyDictionary<string, string> settings) => new(null, settings);
 
     public HttpClient CreateClient() =>
         Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });

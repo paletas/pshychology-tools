@@ -1,11 +1,23 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// single source of truth for the app version: the server csproj
+const csproj = readFileSync(
+  fileURLToPath(new URL('../server/Silvestre.Psychology.Wisc3.Server/Silvestre.Psychology.Wisc3.Server.csproj', import.meta.url)),
+  'utf8',
+);
+const versionMatch = /<Version>([^<]+)<\/Version>/.exec(csproj);
+if (!versionMatch) throw new Error('No <Version> found in the server csproj');
+const version = versionMatch[1].trim();
+
 export default defineConfig({
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [
     react(),
     tailwindcss(),

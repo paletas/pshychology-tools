@@ -53,6 +53,10 @@ cd .tmp/old-publish && dotnet Silvestre.Psychology.Tools.WebApp.dll --urls http:
 - Later (deferred): a Traefik redirect `/new/*` -> `/`. It must never cover `/new/service-worker.js` (a service worker update that meets a redirect fails, so unchecked `/new` installs would stay on 2.0.0 for good): `psytoolsretire` keeps priority 110, above the redirect, indefinitely.
 - Tests: `npm run test:prefix` (`specs/prefix/retire.spec.ts`), `npx tsx scripts/flip-profile.ts prepare-new|check-new|bounce-new|check-root` (production).
 
+### Analytics and privacy
+
+The new app sends anonymous usage events to a self-hosted Umami (`stats.itssilvestre.com`) only when the server's `/config.json` carries an `analytics` block (`Analytics__WebsiteId`, optional `Analytics__Endpoint`, default `https://stats.itssilvestre.com/api/send`), the host is `psy.itssilvestre.com` and `localStorage['umami.disabled']` is unset. Events are closed enums and buckets (no dates, scores, ages, error messages or screen size), queued in IndexedDB (`wisc3-events`, 500 events / 30 days) while offline and replayed with their original timestamp. Cloudflare Web Analytics is also on at the edge. Both are cookie-free. AdSense was removed from the new app (the legacy Blazor page is unchanged). The footer says so.
+
 ### Tests
 - Web: `cd web && npm test` (also `npm run typecheck`).
 - Server: `cd server && dotnet test`.

@@ -8,6 +8,8 @@ RUN cd web && npm ci
 COPY web/ web/
 # tsc -b typechecks web/test, which imports this node-only script
 COPY tests/e2e/scripts/ui-class-audit.ts tests/e2e/scripts/
+# vite.config.ts reads the app <Version> from the server csproj
+COPY server/Silvestre.Psychology.Wisc3.Server/*.csproj server/Silvestre.Psychology.Wisc3.Server/
 RUN cd web && npm run build
 
 # server/global.json is NOT copied: its SDK pin is for local dev; the image uses sdk:10.0 like the old Dockerfile.
