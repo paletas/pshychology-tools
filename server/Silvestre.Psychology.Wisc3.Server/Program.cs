@@ -7,6 +7,7 @@ var spaRoot = Path.GetFullPath(builder.Configuration["Spa:Root"] ?? "../web/dist
 var dataPath = Path.GetFullPath(builder.Configuration["ReferenceData:Path"] ?? "../data/wisc3-pt");
 
 builder.Services.AddSingleton(new ReferenceDataStore(dataPath));
+builder.Services.AddAppTelemetry(builder.Configuration);
 
 // Runtime config for the "Versão anterior" link: only an absolute http(s) URL counts, anything else is unset.
 var legacyRaw = builder.Configuration["Legacy:Url"];
