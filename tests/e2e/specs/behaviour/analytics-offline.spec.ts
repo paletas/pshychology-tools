@@ -86,7 +86,7 @@ test('offline events are queued and replayed with their original timestamp', asy
       expect(Number.isInteger(e.payload.timestamp), `${name} timestamp is an integer`).toBe(true);
       expect(tsList, `${name} keeps its queued timestamp`).toContain(e.payload.timestamp);
       expect(e.payload.data.offline).toBe(true);
-      expect(e.payload.data.app_version).toBe('2.2.0');
+      expect(e.payload.data.app_version).toBe('2.3.0');
       expect(e.payload.hostname).toBe(HOST);
       expect(e.payload).not.toHaveProperty('screen');
     }
