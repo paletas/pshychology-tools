@@ -98,3 +98,6 @@ The new app has its own look, not a port of the old one: a top bar with the menu
 
 ### Intentional UI differences
 Responsive layout (no separate small-screen notice), the culture selector is omitted (it had one option), new banners (update available, reference data updated or unavailable, data version footer), and the charts are redrawn as SVG without a chart library (the old app uses Chart.js 2).
+
+## Telemetry (OpenTelemetry)
+The server exports request-level metrics (HTTP server request count and duration by method, route template and status, outbound HTTP client metrics, and .NET runtime metrics) over OTLP/HTTP. It is enabled only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (for example `http://192.168.1.11:4318`); with it unset no exporter starts. `service.name` is `psychology-tools`; set `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=prod` (or `beta`, `dev`) in the environment. Only metrics are exported, and attributes are limited to an allow-list (method, status code, route template, scheme, protocol): no query strings, client IPs, user agents, URLs or bodies, because test data is sensitive. The `/legacy` app is not instrumented. `GET /healthz` returns 200 for probes.
